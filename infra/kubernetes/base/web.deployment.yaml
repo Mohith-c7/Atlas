@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: faios-web
+  namespace: faios
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: faios-web
+  template:
+    metadata:
+      labels:
+        app: faios-web
+    spec:
+      containers:
+        - name: web
+          image: faios/web:latest
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: faios-config

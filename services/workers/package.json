@@ -1,0 +1,28 @@
+{
+  "name": "@faios/workers",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "clean": "rimraf dist .turbo",
+    "dev": "tsx watch src/main.ts",
+    "lint": "eslint .",
+    "test": "echo \"No tests yet\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@faios/env": "workspace:*",
+    "@faios/events": "workspace:*",
+    "@faios/logger": "workspace:*"
+  },
+  "devDependencies": {
+    "@faios/eslint-config": "workspace:*",
+    "@faios/typescript-config": "workspace:*",
+    "@types/node": "^22.10.2",
+    "eslint": "^9.17.0",
+    "rimraf": "^6.0.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

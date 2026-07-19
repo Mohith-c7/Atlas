@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: faios-ai-orchestrator
+  namespace: faios
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: faios-ai-orchestrator
+  template:
+    metadata:
+      labels:
+        app: faios-ai-orchestrator
+    spec:
+      containers:
+        - name: ai-orchestrator
+          image: faios/ai-orchestrator:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: faios-config

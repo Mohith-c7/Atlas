@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: faios-business-api
+  namespace: faios
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: faios-business-api
+  template:
+    metadata:
+      labels:
+        app: faios-business-api
+    spec:
+      containers:
+        - name: business-api
+          image: faios/business-api:latest
+          ports:
+            - containerPort: 4000
+          envFrom:
+            - configMapRef:
+                name: faios-config

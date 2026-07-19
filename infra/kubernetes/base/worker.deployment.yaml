@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: faios-workers
+  namespace: faios
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: faios-workers
+  template:
+    metadata:
+      labels:
+        app: faios-workers
+    spec:
+      containers:
+        - name: workers
+          image: faios/workers:latest
+          envFrom:
+            - configMapRef:
+                name: faios-config
