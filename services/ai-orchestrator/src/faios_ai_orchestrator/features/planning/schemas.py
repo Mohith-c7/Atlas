@@ -17,6 +17,9 @@ class PlanRequest(CamelModel):
     source: Literal["voice", "chat"]
     input: NonEmptyString
     correlation_id: NonEmptyString = Field(alias="correlationId")
+    available_capabilities: list["AvailableCapability"] = Field(
+        default_factory=list, alias="availableCapabilities"
+    )
 
 
 class PlanStep(CamelModel):
@@ -28,6 +31,15 @@ class PlanStep(CamelModel):
 
 class PlanResponse(CamelModel):
     command_id: NonEmptyString = Field(alias="commandId")
-    status: Literal["completed", "awaiting_approval"]
+    status: Literal["completed", "awaiting_approval", "failed"]
     summary: NonEmptyString
     steps: list[PlanStep]
+
+
+class AvailableCapability(CamelModel):
+    key: NonEmptyString
+    provider: NonEmptyString
+    label: NonEmptyString
+    description: NonEmptyString
+    requires_approval: bool = Field(alias="requiresApproval")
+    status: Literal["available", "not_connected", "disabled"]

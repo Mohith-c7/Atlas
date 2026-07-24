@@ -1,4 +1,5 @@
 from faios_ai_orchestrator.features.planning.schemas import (
+    AvailableCapability,
     PlanRequest,
     PlanResponse,
     PlanStep,
@@ -19,7 +20,19 @@ _HIGH_RISK_KEYWORDS = ("delete", "remove", "cancel", "pay", "purchase", "send", 
 def create_mock_plan(request: PlanRequest) -> PlanResponse:
     normalized_text = request.input.strip()
     lowered_text = normalized_text.lower()
-    capabilities = _select_capabilities(lowered_text)
+    capabilities = _select_capabilities(lowered_text, request.available_capabilities)
+
+    if not capabilities:
+        return PlanResponse(
+            command_id=request.command_id,
+            status="failed",
+            summary=(
+                "Unable to prepare a safe execution plan because no available MCP capability "
+                "matches the founder request."
+            ),
+            steps=[],
+        )
+
     requires_approval = _requires_approval(lowered_text, capabilities)
 
     steps = _build_steps(capabilities, requires_approval)
@@ -31,52 +44,63 @@ def create_mock_plan(request: PlanRequest) -> PlanResponse:
     )
 
 
-def _select_capabilities(lowered_text: str) -> list[str]:
+def _select_capabilities(
+    lowered_text: str, available_capabilities: list[AvailableCapability]
+) -> list[AvailableCapability]:
+    available = _normalize_available_capabilities(available_capabilities)
+    if not available:
+        return []
+
     matched_capabilities = [
-        capability
+        capability_definition
         for capability, keywords in _CAPABILITY_KEYWORDS
-        if any(keyword in lowered_text for keyword in keywords)
+        if (capability_definition := available.get(capability))
+        and any(keyword in lowered_text for keyword in keywords)
     ]
 
-    return matched_capabilities or ["knowledge.search"]
+    if matched_capabilities:
+        return matched_capabilities
+
+    if "knowledge.search" in available:
+        return [available["knowledge.search"]]
+
+    return []
 
 
-def _requires_approval(lowered_text: str, capabilities: list[str]) -> bool:
+def _normalize_available_capabilities(
+    available_capabilities: list[AvailableCapability],
+) -> dict[str, AvailableCapability]:
+    return {
+        capability.key: capability
+        for capability in available_capabilities
+        if capability.status == "available"
+    }
+
+
+def _requires_approval(lowered_text: str, capabilities: list[AvailableCapability]) -> bool:
     if any(keyword in lowered_text for keyword in _HIGH_RISK_KEYWORDS):
         return True
 
-    return any(
-        capability in {"calendar.schedule", "communication.send", "repository.createIssue"}
-        for capability in capabilities
-    )
+    return any(capability.requires_approval for capability in capabilities)
 
 
-def _build_summary(capabilities: list[str]) -> str:
-    capability_phrase = ", ".join(capabilities)
+def _build_summary(capabilities: list[AvailableCapability]) -> str:
+    capability_phrase = ", ".join(capability.key for capability in capabilities)
     return f"Prepared a mock execution plan using provider-agnostic capabilities: {capability_phrase}."
 
 
-def _build_steps(capabilities: list[str], requires_approval: bool) -> list[PlanStep]:
+def _build_steps(
+    capabilities: list[AvailableCapability], requires_approval: bool
+) -> list[PlanStep]:
     steps = []
     for capability in capabilities:
-        provider = _default_provider_for(capability)
         steps.append(
             PlanStep(
-                capability=capability,
-                provider=provider,
-                requires_approval=requires_approval,
+                capability=capability.key,
+                provider=capability.provider,
+                requires_approval=requires_approval or capability.requires_approval,
                 reason="This phase plans the MCP capability without executing external tools.",
             )
         )
 
     return steps
-
-
-def _default_provider_for(capability: str) -> str | None:
-    return {
-        "calendar.schedule": "google-calendar",
-        "communication.send": "gmail",
-        "task.create": "jira",
-        "knowledge.search": "notion",
-        "repository.createIssue": "github",
-    }.get(capability)
