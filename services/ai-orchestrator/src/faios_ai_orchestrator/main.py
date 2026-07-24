@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 
+from faios_ai_orchestrator.features.planning.router import router as planning_router
+
 app = FastAPI(
     title="FAIOS AI Orchestrator",
     version="0.0.0",
@@ -7,4 +9,6 @@ app = FastAPI(
     redoc_url=None,
 )
 
-# Business, authentication, and workflow routes are intentionally deferred.
+app.include_router(planning_router)
+
+# Business, authentication, model-provider, MCP execution, and workflow routes are intentionally deferred.
