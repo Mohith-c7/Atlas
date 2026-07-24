@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { createLogger } from "@faios/logger";
 import { commandRoutes } from "./features/commands/index.js";
+import { mcpCapabilityRoutes } from "./features/mcp-capabilities/index.js";
 import { correlationPlugin } from "./lib/correlation.js";
 
 const logger = createLogger("business-api");
@@ -11,6 +12,7 @@ await server.register(cors, {
   origin: process.env.WEB_ORIGIN ?? "http://localhost:3000",
 });
 await server.register(correlationPlugin);
+await server.register(mcpCapabilityRoutes);
 await server.register(commandRoutes);
 
 const port = Number(process.env.PORT ?? 4000);

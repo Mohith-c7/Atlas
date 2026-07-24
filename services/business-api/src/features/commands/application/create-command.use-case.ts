@@ -1,6 +1,7 @@
 import type { CreateCommandRequest, CreateCommandResponse } from "@faios/contracts";
 import type { PrismaClient } from "@faios/database";
 import { AppError } from "../../../lib/errors.js";
+import { CapabilityRegistry } from "../../mcp-capabilities/index.js";
 import { AiOrchestratorClient } from "../infrastructure/ai-orchestrator.client.js";
 import { CommandRepository } from "../infrastructure/command.repository.js";
 import { resolveDevelopmentFounder } from "../infrastructure/founder-resolver.js";
@@ -13,10 +14,12 @@ type CreateCommandUseCaseInput = {
 export class CreateCommandUseCase {
   private readonly repository: CommandRepository;
   private readonly aiOrchestrator: AiOrchestratorClient;
+  private readonly capabilityRegistry: CapabilityRegistry;
 
   public constructor(private readonly database: PrismaClient) {
     this.repository = new CommandRepository(database);
     this.aiOrchestrator = new AiOrchestratorClient();
+    this.capabilityRegistry = new CapabilityRegistry();
   }
 
   public async execute(input: CreateCommandUseCaseInput): Promise<CreateCommandResponse> {
@@ -30,6 +33,7 @@ export class CreateCommandUseCase {
     });
 
     try {
+      const availableCapabilities = this.capabilityRegistry.listAvailableCapabilities();
       const plan = await this.aiOrchestrator.planCommand({
         commandId: record.command.id,
         founderId: founder.id,
@@ -37,6 +41,7 @@ export class CreateCommandUseCase {
         source: input.request.source,
         input: input.request.input,
         correlationId: input.correlationId,
+        availableCapabilities,
       });
 
       await this.repository.storePlan({
