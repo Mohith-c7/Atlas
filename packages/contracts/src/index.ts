@@ -12,6 +12,21 @@ export const commandStatusSchema = z.enum([
   "cancelled",
 ]);
 
+export const mcpCapabilityStatusSchema = z.enum(["available", "not_connected", "disabled"]);
+
+export const mcpCapabilitySchema = z.object({
+  key: z.string().min(1),
+  provider: z.string().min(1),
+  label: z.string().min(1),
+  description: z.string().min(1),
+  requiresApproval: z.boolean(),
+  status: mcpCapabilityStatusSchema,
+});
+
+export const listCapabilitiesResponseSchema = z.object({
+  capabilities: z.array(mcpCapabilitySchema),
+});
+
 export const createCommandRequestSchema = z.object({
   conversationId: z.string().min(1).optional(),
   source: commandSourceSchema.default("chat"),
@@ -25,6 +40,7 @@ export const planCommandRequestSchema = z.object({
   source: commandSourceSchema,
   input: z.string().min(1),
   correlationId: z.string(),
+  availableCapabilities: z.array(mcpCapabilitySchema).default([]),
 });
 
 export const executionStepSchema = z.object({
@@ -72,6 +88,9 @@ export type CreateCommandRequest = z.infer<typeof createCommandRequestSchema>;
 export type CreateCommandResponse = z.infer<typeof createCommandResponseSchema>;
 export type ExecutionPlan = z.infer<typeof executionPlanSchema>;
 export type ExecutionStep = z.infer<typeof executionStepSchema>;
+export type ListCapabilitiesResponse = z.infer<typeof listCapabilitiesResponseSchema>;
+export type McpCapability = z.infer<typeof mcpCapabilitySchema>;
+export type McpCapabilityStatus = z.infer<typeof mcpCapabilityStatusSchema>;
 export type Pagination = z.infer<typeof paginationSchema>;
 export type PlanCommandRequest = z.infer<typeof planCommandRequestSchema>;
 export type PlanCommandResponse = z.infer<typeof planCommandResponseSchema>;
