@@ -9,8 +9,8 @@ export default function HomePage() {
           Founder AI Operating System
         </h1>
         <p className="mt-6 max-w-2xl text-lg leading-8 text-muted">
-          The founder console shell is ready for feature modules, voice surfaces, and tenant-aware
-          workflows. Business behavior is intentionally deferred.
+          The founder console shell is ready for voice surfaces, chat commands, MCP integrations,
+          and execution history. Business behavior is intentionally deferred.
         </p>
       </section>
     </main>

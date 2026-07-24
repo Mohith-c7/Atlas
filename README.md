@@ -1,6 +1,6 @@
 # Founder AI Operating System
 
-Founder AI Operating System (FAIOS) is an AI-native, voice-first, multi-tenant SaaS platform for operating a startup through natural language. This repository is a production architecture scaffold only: it establishes boundaries, tooling, conventions, and deployment foundations without implementing business features, authentication, or APIs.
+Founder AI Operating System (FAIOS) is an AI-native, voice-first solo-founder SaaS for operating startup tools through natural language. This repository is a production architecture scaffold only: it establishes boundaries, tooling, conventions, and deployment foundations without implementing business features, authentication, or APIs.
 
 ## Monorepo Layout
 
@@ -13,7 +13,7 @@ services/
   ai-orchestrator/      FastAPI + LangGraph service shell
   workers/              Event and workflow worker shell
 packages/
-  contracts/            Versioned DTO and event contract surfaces
+  contracts/            Versioned DTO and command contract surfaces
   database/             Prisma schema, migrations, and client boundary
   env/                  Typed environment loading boundary
   events/               Event names, envelopes, and messaging conventions
@@ -34,7 +34,7 @@ docs/                   Architecture decision records and conventions
 
 - AI-first: the AI orchestrator owns intent interpretation, planning, execution coordination, memory selection, and response synthesis.
 - Voice-first: web and future mobile clients are organized around streaming conversation surfaces.
-- Multi-tenant SaaS: every service boundary must accept tenant context and enforce isolation before touching data or external tools.
+- Solo-founder SaaS: each founder owns one assistant profile, connected tools, memory, conversations, and execution history.
 - API-first: external and internal contracts live in shared packages before implementation.
 - Event-driven: cross-service state changes flow through durable events instead of direct temporal coupling.
 - Capability-based MCP: AI plans against capabilities, while provider-specific details remain behind MCP adapters.
@@ -83,12 +83,31 @@ pnpm build
 
 ## Current Scope
 
+## Product Model
+
+FAIOS is not a team collaboration suite. The founder is the primary operator. Other people may appear as contacts, assignees, invitees, or recipients inside connected tools, but they do not need FAIOS accounts in the MVP.
+
+The system of record inside FAIOS is the founder's command lifecycle:
+
+```text
+Founder voice/text intent
+  -> AI interpretation
+  -> execution plan
+  -> approval gate when needed
+  -> MCP tool invocation
+  -> result summary
+  -> memory update
+  -> execution history
+```
+
+## Current Scope
+
 This scaffold intentionally does not include:
 
 - Authentication implementation
 - Business API routes
 - AI workflow implementation
-- Database entity models
+- Business feature implementation
 - Third-party integration implementation
 
 Those belong in later feature increments after contracts, threat model, tenancy model, and service ownership are approved.

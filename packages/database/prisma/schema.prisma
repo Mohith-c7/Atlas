@@ -7,4 +7,217 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Business models are intentionally deferred until domain contracts are approved.
+enum ConversationChannel {
+  CHAT
+  VOICE
+}
+
+enum MessageRole {
+  FOUNDER
+  ASSISTANT
+  SYSTEM
+  TOOL
+}
+
+enum CommandStatus {
+  RECEIVED
+  PLANNING
+  AWAITING_APPROVAL
+  EXECUTING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum ToolInvocationStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum MemoryKind {
+  FOUNDER_PROFILE
+  COMPANY_FACT
+  PREFERENCE
+  DECISION
+  CONTACT
+  WORKFLOW_PATTERN
+  SUMMARY
+}
+
+model FounderAccount {
+  id             String                  @id @default(cuid())
+  email          String                  @unique
+  displayName    String?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  profile        FounderProfile?
+  companyProfile CompanyProfile?
+  integrations   IntegrationConnection[]
+  conversations  Conversation[]
+  commands       Command[]
+  memoryItems    MemoryItem[]
+}
+
+model FounderProfile {
+  id               String         @id @default(cuid())
+  founderId        String         @unique
+  founder          FounderAccount @relation(fields: [founderId], references: [id], onDelete: Cascade)
+  timezone         String?
+  locale           String?
+  operatingStyle   String?
+  defaultVoice     String?
+  approvalSettings Json?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+model CompanyProfile {
+  id          String         @id @default(cuid())
+  founderId   String         @unique
+  founder     FounderAccount @relation(fields: [founderId], references: [id], onDelete: Cascade)
+  name        String?
+  industry    String?
+  stage       String?
+  description String?
+  context     Json?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model IntegrationConnection {
+  id             String          @id @default(cuid())
+  founderId      String
+  founder        FounderAccount  @relation(fields: [founderId], references: [id], onDelete: Cascade)
+  provider       String
+  accountLabel   String?
+  status         String
+  capabilityKeys String[]
+  metadata       Json?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  invocations    ToolInvocation[]
+
+  @@index([founderId, provider])
+}
+
+model Conversation {
+  id        String              @id @default(cuid())
+  founderId String
+  founder   FounderAccount      @relation(fields: [founderId], references: [id], onDelete: Cascade)
+  channel   ConversationChannel
+  title     String?
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  messages  Message[]
+  commands  Command[]
+
+  @@index([founderId, updatedAt])
+}
+
+model Message {
+  id             String        @id @default(cuid())
+  conversationId String
+  conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           MessageRole
+  content        String
+  metadata       Json?
+  createdAt      DateTime      @default(now())
+  command        Command?
+
+  @@index([conversationId, createdAt])
+}
+
+model Command {
+  id             String          @id @default(cuid())
+  founderId      String
+  founder        FounderAccount  @relation(fields: [founderId], references: [id], onDelete: Cascade)
+  conversationId String?
+  conversation   Conversation?   @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  messageId      String?         @unique
+  message        Message?        @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  source         ConversationChannel
+  rawInput       String
+  status         CommandStatus
+  summary        String?
+  errorCode      String?
+  errorMessage   String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  plan           ExecutionPlan?
+  approvals      ApprovalRequest[]
+  invocations    ToolInvocation[]
+
+  @@index([founderId, createdAt])
+  @@index([status, updatedAt])
+}
+
+model ExecutionPlan {
+  id        String   @id @default(cuid())
+  commandId String   @unique
+  command   Command  @relation(fields: [commandId], references: [id], onDelete: Cascade)
+  summary   String
+  steps     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApprovalRequest {
+  id          String         @id @default(cuid())
+  commandId   String
+  command     Command        @relation(fields: [commandId], references: [id], onDelete: Cascade)
+  reason      String
+  payload     Json?
+  status      ApprovalStatus
+  requestedAt DateTime       @default(now())
+  resolvedAt  DateTime?
+
+  @@index([commandId, status])
+}
+
+model ToolInvocation {
+  id              String                 @id @default(cuid())
+  commandId       String
+  command         Command                @relation(fields: [commandId], references: [id], onDelete: Cascade)
+  integrationId   String?
+  integration     IntegrationConnection? @relation(fields: [integrationId], references: [id], onDelete: SetNull)
+  capabilityKey   String
+  provider        String?
+  status          ToolInvocationStatus
+  requestPayload  Json?
+  responsePayload Json?
+  errorCode       String?
+  errorMessage    String?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime               @default(now())
+
+  @@index([commandId, createdAt])
+  @@index([capabilityKey, status])
+}
+
+model MemoryItem {
+  id          String         @id @default(cuid())
+  founderId   String
+  founder     FounderAccount @relation(fields: [founderId], references: [id], onDelete: Cascade)
+  kind        MemoryKind
+  content     String
+  source      String?
+  confidence  Float?
+  vectorRef   String?
+  metadata    Json?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([founderId, kind])
+  @@index([vectorRef])
+}

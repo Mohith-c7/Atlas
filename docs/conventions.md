@@ -2,11 +2,12 @@
 
 ## Naming
 
-- Workspace packages use the `@faios/*` scope.
+- Monorepo packages use the `@faios/*` scope.
 - Feature folders use kebab-case.
 - TypeScript files use kebab-case except React components, which use PascalCase.
 - Environment variables use uppercase snake case.
 - Event names use past-tense domain facts such as `workflow.completed`.
+- Product language should use `founder`, `command`, `integration`, `memory`, and `MCP capability` instead of workspace/team terminology unless a later product phase explicitly introduces it.
 
 ## Feature Layout
 

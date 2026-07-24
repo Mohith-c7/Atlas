@@ -1,18 +1,20 @@
-import type { CorrelationId, TenantId } from "@faios/types";
+import type { CorrelationId, FounderId } from "@faios/types";
 
 export type DomainEventType =
-  | "user.created"
-  | "workspace.created"
+  | "founder.created"
+  | "company-profile.updated"
   | "integration.connected"
-  | "workflow.completed"
-  | "notification.sent"
-  | "meeting.scheduled"
+  | "command.received"
+  | "command.planned"
+  | "command.completed"
+  | "approval.requested"
+  | "tool-invocation.completed"
   | "memory.updated";
 
 export interface DomainEventEnvelope<TPayload = unknown> {
   readonly eventId: string;
   readonly eventType: DomainEventType;
-  readonly tenantId: TenantId;
+  readonly founderId: FounderId;
   readonly correlationId: CorrelationId;
   readonly occurredAt: string;
   readonly schemaVersion: number;

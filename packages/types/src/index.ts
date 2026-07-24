@@ -1,13 +1,14 @@
 export type Brand<TValue, TBrand extends string> = TValue & { readonly __brand: TBrand };
 
-export type TenantId = Brand<string, "TenantId">;
+export type FounderId = Brand<string, "FounderId">;
 export type UserId = Brand<string, "UserId">;
-export type WorkspaceId = Brand<string, "WorkspaceId">;
+export type CompanyId = Brand<string, "CompanyId">;
 export type CorrelationId = Brand<string, "CorrelationId">;
+export type CommandId = Brand<string, "CommandId">;
 
-export interface TenantContext {
-  readonly tenantId: TenantId;
-  readonly workspaceId: WorkspaceId;
-  readonly actorId?: UserId;
+export interface FounderContext {
+  readonly founderId: FounderId;
+  readonly companyId?: CompanyId;
   readonly correlationId: CorrelationId;
+  readonly commandId?: CommandId;
 }
