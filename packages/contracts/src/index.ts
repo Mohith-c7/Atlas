@@ -14,6 +14,8 @@ export const commandStatusSchema = z.enum([
 
 export const mcpCapabilityStatusSchema = z.enum(["available", "not_connected", "disabled"]);
 
+export const approvalStatusSchema = z.enum(["pending", "approved", "rejected", "expired"]);
+
 export const mcpCapabilitySchema = z.object({
   key: z.string().min(1),
   provider: z.string().min(1),
@@ -69,6 +71,32 @@ export const createCommandResponseSchema = z.object({
   correlationId: z.string(),
 });
 
+export const approvalRequestSchema = z.object({
+  id: z.string(),
+  commandId: z.string(),
+  status: approvalStatusSchema,
+  reason: z.string(),
+  payload: z
+    .object({
+      capability: z.string(),
+      provider: z.string().optional(),
+      reason: z.string(),
+      commandSummary: z.string().optional(),
+    })
+    .passthrough()
+    .optional(),
+  requestedAt: z.string(),
+  resolvedAt: z.string().nullable().optional(),
+});
+
+export const listApprovalsResponseSchema = z.object({
+  approvals: z.array(approvalRequestSchema),
+});
+
+export const approvalDecisionResponseSchema = z.object({
+  approval: approvalRequestSchema,
+});
+
 export const apiErrorSchema = z.object({
   code: z.string(),
   message: z.string(),
@@ -82,6 +110,9 @@ export const paginationSchema = z.object({
 });
 
 export type ApiError = z.infer<typeof apiErrorSchema>;
+export type ApprovalDecisionResponse = z.infer<typeof approvalDecisionResponseSchema>;
+export type ApprovalRequest = z.infer<typeof approvalRequestSchema>;
+export type ApprovalStatus = z.infer<typeof approvalStatusSchema>;
 export type CommandSource = z.infer<typeof commandSourceSchema>;
 export type CommandStatus = z.infer<typeof commandStatusSchema>;
 export type CreateCommandRequest = z.infer<typeof createCommandRequestSchema>;
@@ -89,6 +120,7 @@ export type CreateCommandResponse = z.infer<typeof createCommandResponseSchema>;
 export type ExecutionPlan = z.infer<typeof executionPlanSchema>;
 export type ExecutionStep = z.infer<typeof executionStepSchema>;
 export type ListCapabilitiesResponse = z.infer<typeof listCapabilitiesResponseSchema>;
+export type ListApprovalsResponse = z.infer<typeof listApprovalsResponseSchema>;
 export type McpCapability = z.infer<typeof mcpCapabilitySchema>;
 export type McpCapabilityStatus = z.infer<typeof mcpCapabilityStatusSchema>;
 export type Pagination = z.infer<typeof paginationSchema>;
