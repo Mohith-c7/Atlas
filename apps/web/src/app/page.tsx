@@ -1,4 +1,5 @@
 import { CommandComposer } from "@/features/commands";
+import { CapabilityReadinessPanel } from "@/features/mcp";
 
 export default function HomePage() {
   return (
@@ -31,7 +32,8 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div>
+        <div className="grid gap-5">
+          <CapabilityReadinessPanel />
           <CommandComposer />
         </div>
       </section>
