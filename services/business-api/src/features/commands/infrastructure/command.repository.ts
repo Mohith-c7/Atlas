@@ -75,6 +75,9 @@ export class CommandRepository {
 
   public async storePlan(input: StorePlanInput) {
     return this.database.$transaction(async (transaction) => {
+      const approvalRequiredSteps = input.steps.filter((step) => step.requiresApproval);
+      const commandStatus = approvalRequiredSteps.length > 0 ? "awaiting_approval" : input.status;
+
       const plan = await transaction.executionPlan.create({
         data: {
           commandId: input.commandId,
@@ -83,10 +86,26 @@ export class CommandRepository {
         },
       });
 
+      if (approvalRequiredSteps.length > 0) {
+        await transaction.approvalRequest.createMany({
+          data: approvalRequiredSteps.map((step) => ({
+            commandId: input.commandId,
+            reason: step.reason,
+            status: "PENDING",
+            payload: {
+              capability: step.capability,
+              provider: step.provider,
+              reason: step.reason,
+              commandSummary: input.summary,
+            },
+          })),
+        });
+      }
+
       const command = await transaction.command.update({
         where: { id: input.commandId },
         data: {
-          status: toPrismaCommandStatus(input.status),
+          status: toPrismaCommandStatus(commandStatus),
           summary: input.summary,
         },
       });
