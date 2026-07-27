@@ -9,6 +9,8 @@ on:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://faios:faios@localhost:5432/faios_shadow?schema=public
     services:
       postgres:
         image: postgres:17-alpine
@@ -35,6 +37,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @faios/database exec prisma generate --schema prisma/schema.prisma
 
       - name: Format
         run: pnpm format:check
@@ -66,7 +71,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U faios -d faios"
+          --health-cmd "pg_isready -U faios -d faios_shadow"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
