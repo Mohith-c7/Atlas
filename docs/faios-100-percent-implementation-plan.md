@@ -488,6 +488,31 @@ The next engineering slice should be M9.1: production-shaped founder account and
 - `pnpm test`
 - Prisma migration validation
 
+## Second Next Implementation Slice
+
+M9.2 adds founder account/profile management and session lifecycle controls without implementing login screens.
+
+### M9.2 Checklist
+
+- [x] Add founder account read API.
+- [x] Add founder account update API.
+- [x] Add founder profile update boundary.
+- [x] Add company profile update boundary.
+- [x] Add founder session list API.
+- [x] Add founder-owned session revoke API.
+- [x] Add shared contracts for account and session management.
+- [x] Add web account settings boundary.
+- [x] Add account/session management integration tests.
+
+### M9.2 Completion Gate
+
+- `pnpm format:check`
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm test`
+- `pnpm build`
+- `pnpm --filter @faios/business-api test:integration`
+
 ## Out Of Scope For V1
 
 - Team workspaces.

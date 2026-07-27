@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { createLogger } from "@faios/logger";
+import { accountRoutes } from "./features/account/index.js";
 import { approvalRoutes } from "./features/approvals/index.js";
 import { authRoutes } from "./features/auth/index.js";
 import { commandRoutes } from "./features/commands/index.js";
@@ -20,6 +21,7 @@ await server.register(correlationPlugin);
 await server.register(founderSessionPlugin);
 await server.register(healthRoutes);
 await server.register(authRoutes);
+await server.register(accountRoutes);
 await server.register(approvalRoutes);
 await server.register(integrationRoutes);
 await server.register(mcpCapabilityRoutes);

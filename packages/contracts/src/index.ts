@@ -44,6 +44,74 @@ export const currentFounderResponseSchema = z.object({
   correlationId: z.string(),
 });
 
+export const founderAccountSchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  displayName: z.string().nullable().optional(),
+  profile: z.object({
+    timezone: z.string().nullable().optional(),
+    locale: z.string().nullable().optional(),
+    operatingStyle: z.string().nullable().optional(),
+    defaultVoice: z.string().nullable().optional(),
+    approvalSettings: z.unknown().optional(),
+  }),
+  companyProfile: z.object({
+    name: z.string().nullable().optional(),
+    industry: z.string().nullable().optional(),
+    stage: z.string().nullable().optional(),
+    description: z.string().nullable().optional(),
+    context: z.unknown().optional(),
+  }),
+});
+
+export const getFounderAccountResponseSchema = z.object({
+  account: founderAccountSchema,
+  correlationId: z.string(),
+});
+
+export const updateFounderAccountRequestSchema = z.object({
+  displayName: z.string().trim().min(1).max(120).optional(),
+  profile: z
+    .object({
+      timezone: z.string().trim().min(1).max(120).nullable().optional(),
+      locale: z.string().trim().min(2).max(20).nullable().optional(),
+      operatingStyle: z.string().trim().min(1).max(2000).nullable().optional(),
+      defaultVoice: z.string().trim().min(1).max(120).nullable().optional(),
+      approvalSettings: z.unknown().optional(),
+    })
+    .optional(),
+  companyProfile: z
+    .object({
+      name: z.string().trim().min(1).max(160).nullable().optional(),
+      industry: z.string().trim().min(1).max(160).nullable().optional(),
+      stage: z.string().trim().min(1).max(120).nullable().optional(),
+      description: z.string().trim().min(1).max(4000).nullable().optional(),
+      context: z.unknown().optional(),
+    })
+    .optional(),
+});
+
+export const founderSessionSummarySchema = z.object({
+  id: z.string(),
+  status: z.enum(["active", "revoked", "expired"]),
+  issuedAt: z.string(),
+  expiresAt: z.string(),
+  revokedAt: z.string().nullable().optional(),
+  lastSeenAt: z.string().nullable().optional(),
+  userAgent: z.string().nullable().optional(),
+  isCurrent: z.boolean(),
+});
+
+export const listFounderSessionsResponseSchema = z.object({
+  sessions: z.array(founderSessionSummarySchema),
+  correlationId: z.string(),
+});
+
+export const revokeFounderSessionResponseSchema = z.object({
+  session: founderSessionSummarySchema,
+  correlationId: z.string(),
+});
+
 export const memoryKindSchema = z.enum([
   "founder_profile",
   "company_fact",
@@ -324,6 +392,12 @@ export type ConnectIntegrationResponse = z.infer<typeof connectIntegrationRespon
 export type CreateCommandRequest = z.infer<typeof createCommandRequestSchema>;
 export type CreateCommandResponse = z.infer<typeof createCommandResponseSchema>;
 export type CurrentFounderResponse = z.infer<typeof currentFounderResponseSchema>;
+export type FounderAccount = z.infer<typeof founderAccountSchema>;
+export type FounderSessionSummary = z.infer<typeof founderSessionSummarySchema>;
+export type GetFounderAccountResponse = z.infer<typeof getFounderAccountResponseSchema>;
+export type ListFounderSessionsResponse = z.infer<typeof listFounderSessionsResponseSchema>;
+export type RevokeFounderSessionResponse = z.infer<typeof revokeFounderSessionResponseSchema>;
+export type UpdateFounderAccountRequest = z.infer<typeof updateFounderAccountRequestSchema>;
 export type ExecutionPlan = z.infer<typeof executionPlanSchema>;
 export type ExecutionStep = z.infer<typeof executionStepSchema>;
 export type ExecutionJob = z.infer<typeof executionJobSchema>;
