@@ -540,6 +540,36 @@ M9.3 adds the billing and entitlement foundation needed before real Stripe check
 - `pnpm build`
 - `pnpm --filter @faios/business-api test:integration`
 
+## Fourth Next Implementation Slice
+
+M9.4 adds Stripe checkout, billing portal, and verified webhook synchronization boundaries.
+
+### M9.4 Checklist
+
+- [x] Add billing webhook event idempotency model.
+- [x] Add formal Prisma migration.
+- [x] Add checkout session contracts.
+- [x] Add billing portal session contracts.
+- [x] Add Stripe customer creation boundary.
+- [x] Add Stripe checkout session boundary.
+- [x] Add Stripe billing portal boundary.
+- [x] Add Stripe webhook signature verification.
+- [x] Add idempotent subscription webhook sync.
+- [x] Add web checkout and portal actions.
+- [x] Add Stripe boundary integration tests.
+- [x] Update environment examples.
+
+### M9.4 Completion Gate
+
+- `pnpm --filter @faios/database prisma:generate`
+- Prisma migration deploy validation
+- `pnpm format:check`
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm test`
+- `pnpm build`
+- `pnpm --filter @faios/business-api test:integration`
+
 ## Out Of Scope For V1
 
 - Team workspaces.

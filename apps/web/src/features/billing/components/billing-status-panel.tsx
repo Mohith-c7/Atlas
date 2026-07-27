@@ -1,7 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
-import { useBillingStatus } from "../hooks/use-billing-status";
+import {
+  useBillingStatus,
+  useCreateBillingCheckoutSession,
+  useCreateBillingPortalSession,
+} from "../hooks/use-billing-status";
 import { BillingApiError } from "../types/billing";
 
 function formatError(error: Error) {
@@ -16,11 +20,52 @@ function formatError(error: Error) {
 
 export function BillingStatusPanel() {
   const billing = useBillingStatus();
+  const checkout = useCreateBillingCheckoutSession();
+  const portal = useCreateBillingPortalSession();
   const errorMessage = useMemo(
-    () => (billing.error ? formatError(billing.error) : undefined),
-    [billing.error],
+    () =>
+      billing.error
+        ? formatError(billing.error)
+        : checkout.error
+          ? formatError(checkout.error)
+          : portal.error
+            ? formatError(portal.error)
+            : undefined,
+    [billing.error, checkout.error, portal.error],
   );
   const status = billing.data?.billing;
+
+  function createReturnUrl(path: string) {
+    return `${window.location.origin}${path}`;
+  }
+
+  function handleCheckout() {
+    checkout.mutate(
+      {
+        planKey: "pro",
+        successUrl: createReturnUrl("/?billing=success"),
+        cancelUrl: createReturnUrl("/?billing=cancelled"),
+      },
+      {
+        onSuccess: (response) => {
+          window.location.assign(response.checkoutUrl);
+        },
+      },
+    );
+  }
+
+  function handlePortal() {
+    portal.mutate(
+      {
+        returnUrl: createReturnUrl("/"),
+      },
+      {
+        onSuccess: (response) => {
+          window.location.assign(response.portalUrl);
+        },
+      },
+    );
+  }
 
   return (
     <section className="rounded-lg border border-border bg-white p-4 shadow-sm sm:p-5">
@@ -58,6 +103,25 @@ export function BillingStatusPanel() {
           Current period ends {new Date(status.currentPeriodEnd).toLocaleDateString()}.
         </p>
       ) : null}
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        <button
+          className="inline-flex min-h-10 items-center justify-center rounded-md bg-foreground px-4 text-sm font-semibold text-white transition hover:bg-foreground/90 disabled:cursor-not-allowed disabled:bg-muted"
+          disabled={checkout.isPending}
+          onClick={handleCheckout}
+          type="button"
+        >
+          {checkout.isPending ? "Opening checkout..." : "Upgrade to Pro"}
+        </button>
+        <button
+          className="inline-flex min-h-10 items-center justify-center rounded-md border border-border bg-background px-4 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={portal.isPending}
+          onClick={handlePortal}
+          type="button"
+        >
+          {portal.isPending ? "Opening portal..." : "Billing portal"}
+        </button>
+      </div>
 
       {errorMessage ? (
         <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">

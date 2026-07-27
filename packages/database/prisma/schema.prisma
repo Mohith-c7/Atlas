@@ -100,6 +100,7 @@ model BillingCustomer {
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
   subscriptions      Subscription[]
+  webhookEvents      BillingWebhookEvent[]
 
   @@index([provider, providerCustomerId])
 }
@@ -157,6 +158,24 @@ model UsageCounter {
   @@unique([founderId, featureKey, periodStart, periodEnd])
   @@index([founderId, featureKey])
   @@index([periodEnd])
+}
+
+model BillingWebhookEvent {
+  id                String           @id @default(cuid())
+  provider          String
+  providerEventId   String
+  billingCustomerId String?
+  billingCustomer   BillingCustomer? @relation(fields: [billingCustomerId], references: [id], onDelete: SetNull)
+  eventType         String
+  status            String
+  payload           Json?
+  processedAt       DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@unique([provider, providerEventId])
+  @@index([eventType, status])
+  @@index([billingCustomerId])
 }
 
 model FounderAuthIdentity {

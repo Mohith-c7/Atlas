@@ -22,7 +22,7 @@ declare module "fastify" {
 
 const DEFAULT_DEV_FOUNDER_ID = "dev_founder";
 const DEFAULT_DEV_FOUNDER_EMAIL = "founder@faios.local";
-const PUBLIC_ROUTE_PREFIXES = ["/health"] as const;
+const PUBLIC_ROUTE_PREFIXES = ["/health", "/api/v1/billing/stripe/webhook"] as const;
 
 function getHeaderValue(value: string | string[] | undefined): string | undefined {
   if (Array.isArray(value)) {

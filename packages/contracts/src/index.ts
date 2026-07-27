@@ -151,6 +151,34 @@ export const getBillingStatusResponseSchema = z.object({
   correlationId: z.string(),
 });
 
+export const createBillingCheckoutSessionRequestSchema = z.object({
+  planKey: z.string().min(1).max(80),
+  successUrl: z.string().url(),
+  cancelUrl: z.string().url(),
+});
+
+export const createBillingCheckoutSessionResponseSchema = z.object({
+  checkoutUrl: z.string().url(),
+  sessionId: z.string(),
+  correlationId: z.string(),
+});
+
+export const createBillingPortalSessionRequestSchema = z.object({
+  returnUrl: z.string().url(),
+});
+
+export const createBillingPortalSessionResponseSchema = z.object({
+  portalUrl: z.string().url(),
+  sessionId: z.string(),
+  correlationId: z.string(),
+});
+
+export const billingWebhookResponseSchema = z.object({
+  received: z.boolean(),
+  eventId: z.string(),
+  eventType: z.string(),
+});
+
 export const memoryKindSchema = z.enum([
   "founder_profile",
   "company_fact",
@@ -437,6 +465,19 @@ export type BillingStatus = z.infer<typeof billingStatusSchema>;
 export type BillingSubscriptionStatus = z.infer<typeof billingSubscriptionStatusSchema>;
 export type GetFounderAccountResponse = z.infer<typeof getFounderAccountResponseSchema>;
 export type GetBillingStatusResponse = z.infer<typeof getBillingStatusResponseSchema>;
+export type BillingWebhookResponse = z.infer<typeof billingWebhookResponseSchema>;
+export type CreateBillingCheckoutSessionRequest = z.infer<
+  typeof createBillingCheckoutSessionRequestSchema
+>;
+export type CreateBillingCheckoutSessionResponse = z.infer<
+  typeof createBillingCheckoutSessionResponseSchema
+>;
+export type CreateBillingPortalSessionRequest = z.infer<
+  typeof createBillingPortalSessionRequestSchema
+>;
+export type CreateBillingPortalSessionResponse = z.infer<
+  typeof createBillingPortalSessionResponseSchema
+>;
 export type ListFounderSessionsResponse = z.infer<typeof listFounderSessionsResponseSchema>;
 export type PlanEntitlement = z.infer<typeof planEntitlementSchema>;
 export type RevokeFounderSessionResponse = z.infer<typeof revokeFounderSessionResponseSchema>;

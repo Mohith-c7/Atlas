@@ -1,6 +1,13 @@
 import type { GetBillingStatusResponse } from "@faios/contracts";
 
-export type { BillingStatus, GetBillingStatusResponse } from "@faios/contracts";
+export type {
+  BillingStatus,
+  CreateBillingCheckoutSessionRequest,
+  CreateBillingCheckoutSessionResponse,
+  CreateBillingPortalSessionRequest,
+  CreateBillingPortalSessionResponse,
+  GetBillingStatusResponse,
+} from "@faios/contracts";
 
 export type BillingApiErrorResponse = {
   readonly code: string;
