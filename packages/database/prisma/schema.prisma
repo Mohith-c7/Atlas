@@ -63,6 +63,7 @@ model FounderAccount {
   profile        FounderProfile?
   companyProfile CompanyProfile?
   integrations   IntegrationConnection[]
+  oauthStates    IntegrationOAuthState[]
   conversations  Conversation[]
   commands       Command[]
   memoryItems    MemoryItem[]
@@ -122,6 +123,22 @@ model IntegrationCredential {
   updatedAt       DateTime              @updatedAt
 
   @@index([keyVersion])
+}
+
+model IntegrationOAuthState {
+  id          String         @id @default(cuid())
+  founderId   String
+  founder     FounderAccount @relation(fields: [founderId], references: [id], onDelete: Cascade)
+  provider    String
+  state       String         @unique
+  redirectUri String
+  metadata    Json?
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime       @default(now())
+
+  @@index([founderId, provider, expiresAt])
+  @@index([state, expiresAt])
 }
 
 model Conversation {

@@ -116,4 +116,66 @@ export class IntegrationConnectionRepository {
 
     return toContractConnection(connection);
   }
+
+  public async createOAuthState(input: {
+    founderId: string;
+    provider: "github";
+    state: string;
+    redirectUri: string;
+    metadata: Prisma.InputJsonValue;
+    expiresAt: Date;
+  }): Promise<void> {
+    await this.database.integrationOAuthState.create({
+      data: input,
+    });
+  }
+
+  public async consumeOAuthState(input: {
+    founderId: string;
+    provider: "github";
+    state: string;
+    now: Date;
+  }): Promise<
+    | {
+        readonly redirectUri: string;
+        readonly metadata: Prisma.JsonValue;
+      }
+    | undefined
+  > {
+    const oauthState = await this.database.$transaction(async (transaction) => {
+      const consumeResult = await transaction.integrationOAuthState.updateMany({
+        where: {
+          founderId: input.founderId,
+          provider: input.provider,
+          state: input.state,
+          consumedAt: null,
+          expiresAt: {
+            gt: input.now,
+          },
+        },
+        data: {
+          consumedAt: input.now,
+        },
+      });
+
+      if (consumeResult.count !== 1) {
+        return undefined;
+      }
+
+      return transaction.integrationOAuthState.findUnique({
+        where: {
+          state: input.state,
+        },
+      });
+    });
+
+    if (!oauthState) {
+      return undefined;
+    }
+
+    return {
+      redirectUri: oauthState.redirectUri,
+      metadata: oauthState.metadata,
+    };
+  }
 }

@@ -9,7 +9,7 @@
     "dev": "tsx watch src/main.ts",
     "lint": "eslint .",
     "test": "echo \"No tests yet\"",
-    "test:integration": "tsx src/integration/github-connection.integration.ts && tsx src/integration/github-execution-payload.integration.ts && tsx src/integration/founder-session-boundary.integration.ts",
+    "test:integration": "tsx src/integration/github-connection.integration.ts && tsx src/integration/github-execution-payload.integration.ts && tsx src/integration/founder-session-boundary.integration.ts && tsx src/integration/github-oauth.integration.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

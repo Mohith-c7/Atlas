@@ -49,6 +49,26 @@ export const githubIntegrationConnectionRequestSchema = z.object({
   apiBaseUrl: z.string().url().default("https://api.github.com"),
 });
 
+export const startGitHubOAuthRequestSchema = z.object({
+  accountLabel: z.string().min(1).max(120).optional(),
+  owner: z.string().min(1).max(120),
+  repo: z.string().min(1).max(120),
+  redirectUri: z.string().url(),
+  apiBaseUrl: z.string().url().default("https://api.github.com"),
+});
+
+export const startGitHubOAuthResponseSchema = z.object({
+  authorizationUrl: z.string().url(),
+  state: z.string().min(1),
+  expiresAt: z.string(),
+  correlationId: z.string(),
+});
+
+export const completeGitHubOAuthResponseSchema = z.object({
+  connection: z.lazy(() => integrationConnectionSchema),
+  correlationId: z.string(),
+});
+
 export const integrationConnectionSchema = z.object({
   id: z.string(),
   provider: integrationProviderSchema,
@@ -241,6 +261,9 @@ export type ExecutionDispatchMessage = z.infer<typeof executionDispatchMessageSc
 export type GitHubIntegrationConnectionRequest = z.infer<
   typeof githubIntegrationConnectionRequestSchema
 >;
+export type StartGitHubOAuthRequest = z.infer<typeof startGitHubOAuthRequestSchema>;
+export type StartGitHubOAuthResponse = z.infer<typeof startGitHubOAuthResponseSchema>;
+export type CompleteGitHubOAuthResponse = z.infer<typeof completeGitHubOAuthResponseSchema>;
 export type GitHubCreateIssueExecutionPayload = z.infer<
   typeof githubCreateIssueExecutionPayloadSchema
 >;
