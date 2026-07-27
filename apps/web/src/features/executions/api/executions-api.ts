@@ -8,10 +8,10 @@ import {
   type ListCommandExecutionsResponse,
   type ToolInvocation,
 } from "../types/execution";
+import { apiFetch } from "../../../lib/api-client";
+import { businessApiUrl } from "../../../lib/config";
 
-const BUSINESS_API_URL =
-  process.env.NEXT_PUBLIC_BUSINESS_API_URL?.replace(/\/$/, "") ?? "http://localhost:4000";
-const EXECUTIONS_ENDPOINT = `${BUSINESS_API_URL}/api/v1/commands/executions`;
+const EXECUTIONS_ENDPOINT = `${businessApiUrl}/api/v1/commands/executions`;
 export const EXECUTIONS_EVENTS_ENDPOINT = `${EXECUTIONS_ENDPOINT}/events`;
 
 const commandStatuses = new Set<CommandExecutionStatus>([
@@ -31,14 +31,6 @@ const invocationStatuses = new Set<ExecutionStatus>([
   "failed",
   "cancelled",
 ]);
-
-function createCorrelationId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `corr_${crypto.randomUUID()}`;
-  }
-
-  return `corr_${Date.now().toString(36)}`;
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object";
@@ -172,11 +164,7 @@ async function readJson(response: Response): Promise<unknown> {
 }
 
 export async function listCommandExecutions(): Promise<ListCommandExecutionsResponse> {
-  const response = await fetch(EXECUTIONS_ENDPOINT, {
-    headers: {
-      "X-Correlation-Id": createCorrelationId(),
-    },
-  });
+  const response = await apiFetch(EXECUTIONS_ENDPOINT);
   const payload = await readJson(response);
 
   if (!response.ok) {

@@ -7,20 +7,12 @@ import {
   type ApprovalStatus,
   type ListApprovalsResponse,
 } from "../types/approval";
+import { apiFetch } from "../../../lib/api-client";
+import { businessApiUrl } from "../../../lib/config";
 
-const BUSINESS_API_URL =
-  process.env.NEXT_PUBLIC_BUSINESS_API_URL?.replace(/\/$/, "") ?? "http://localhost:4000";
-const APPROVALS_ENDPOINT = `${BUSINESS_API_URL}/api/v1/approvals`;
+const APPROVALS_ENDPOINT = `${businessApiUrl}/api/v1/approvals`;
 
 const approvalStatuses = new Set<ApprovalStatus>(["pending", "approved", "rejected", "expired"]);
-
-function createCorrelationId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `corr_${crypto.randomUUID()}`;
-  }
-
-  return `corr_${Date.now().toString(36)}`;
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object";
@@ -121,12 +113,8 @@ async function requestJson<TResponse>(
   init: RequestInit,
   normalize: (payload: unknown) => TResponse,
 ): Promise<TResponse> {
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     ...init,
-    headers: {
-      ...init.headers,
-      "X-Correlation-Id": createCorrelationId(),
-    },
   });
   const payload = await readJson(response);
 

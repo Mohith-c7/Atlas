@@ -89,7 +89,7 @@ async function main() {
     founderId,
     email: `${founderId}@faios.local`,
     displayName: "Memory Founder",
-    source: "header",
+    source: "development",
   };
 
   process.env.AI_ORCHESTRATOR_URL = planningServer.baseUrl;

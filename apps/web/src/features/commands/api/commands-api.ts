@@ -4,18 +4,10 @@ import {
   type CreateCommandRequest,
   type CreateCommandResponse,
 } from "../types/command";
+import { apiFetch } from "../../../lib/api-client";
+import { businessApiUrl } from "../../../lib/config";
 
-const BUSINESS_API_URL =
-  process.env.NEXT_PUBLIC_BUSINESS_API_URL?.replace(/\/$/, "") ?? "http://localhost:4000";
-const COMMANDS_ENDPOINT = `${BUSINESS_API_URL}/api/v1/commands`;
-
-function createCorrelationId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `corr_${crypto.randomUUID()}`;
-  }
-
-  return `corr_${Date.now().toString(36)}`;
-}
+const COMMANDS_ENDPOINT = `${businessApiUrl}/api/v1/commands`;
 
 function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   if (!value || typeof value !== "object") {
@@ -41,12 +33,10 @@ async function readJson(response: Response): Promise<unknown> {
 }
 
 export async function createCommand(request: CreateCommandRequest): Promise<CreateCommandResponse> {
-  const correlationId = createCorrelationId();
-  const response = await fetch(COMMANDS_ENDPOINT, {
+  const response = await apiFetch(COMMANDS_ENDPOINT, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Correlation-Id": correlationId,
     },
     body: JSON.stringify(request),
   });

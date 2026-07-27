@@ -83,7 +83,7 @@ async function main() {
     founderId,
     email: `${founderId}@faios.local`,
     displayName: "OAuth Founder",
-    source: "header",
+    source: "development",
   };
 
   process.env.GITHUB_OAUTH_CLIENT_ID = "github_oauth_client";

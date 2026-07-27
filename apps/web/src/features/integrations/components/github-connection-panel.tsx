@@ -9,6 +9,7 @@ import {
   useIntegrationConnections,
   useStartGitHubOAuth,
 } from "../hooks/use-integration-connections";
+import { githubOAuthCallbackUrl } from "../../../lib/config";
 
 function formatError(error: Error) {
   if (error instanceof IntegrationApiError) {
@@ -63,16 +64,12 @@ export function GitHubConnectionPanel() {
       return;
     }
 
-    const redirectUri =
-      process.env.NEXT_PUBLIC_GITHUB_OAUTH_CALLBACK_URL ??
-      `${process.env.NEXT_PUBLIC_BUSINESS_API_URL?.replace(/\/$/, "") ?? "http://localhost:4000"}/api/v1/integrations/github/oauth/callback`;
-
     startGitHubOAuth.mutate(
       {
         accountLabel: accountLabel.trim() || undefined,
         owner: owner.trim(),
         repo: repo.trim(),
-        redirectUri,
+        redirectUri: githubOAuthCallbackUrl,
       },
       {
         onSuccess: (response) => {

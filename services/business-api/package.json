@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "start": "node --import tsx src/main.ts",
     "test": "echo \"No tests yet\"",
-    "test:integration": "tsx src/integration/github-connection.integration.ts && tsx src/integration/github-execution-payload.integration.ts && tsx src/integration/founder-session-boundary.integration.ts && tsx src/integration/github-oauth.integration.ts && tsx src/integration/memory-context.integration.ts && tsx src/integration/execution-events.integration.ts && tsx src/integration/health.integration.ts",
+    "test:integration": "tsx src/integration/github-connection.integration.ts && tsx src/integration/github-execution-payload.integration.ts && tsx src/integration/founder-session-boundary.integration.ts && tsx src/integration/founder-session-auth.integration.ts && tsx src/integration/github-oauth.integration.ts && tsx src/integration/memory-context.integration.ts && tsx src/integration/execution-events.integration.ts && tsx src/integration/health.integration.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -23,7 +23,8 @@
     "@faios/security": "workspace:*",
     "@fastify/cors": "^11.3.0",
     "amqplib": "^2.0.1",
-    "fastify": "^5.1.0"
+    "fastify": "^5.1.0",
+    "fastify-plugin": "^6.0.0"
   },
   "devDependencies": {
     "@faios/eslint-config": "workspace:*",

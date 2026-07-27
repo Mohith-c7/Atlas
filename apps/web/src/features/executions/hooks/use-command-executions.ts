@@ -19,7 +19,9 @@ export function useCommandExecutions() {
       return undefined;
     }
 
-    const eventSource = new EventSource(EXECUTIONS_EVENTS_ENDPOINT);
+    const eventSource = new EventSource(EXECUTIONS_EVENTS_ENDPOINT, {
+      withCredentials: true,
+    });
 
     eventSource.addEventListener("command.execution.snapshot", (message: MessageEvent) => {
       if (typeof message.data !== "string") {

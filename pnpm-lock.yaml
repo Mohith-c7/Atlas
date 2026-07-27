@@ -368,6 +368,9 @@ importers:
       fastify:
         specifier: ^5.1.0
         version: 5.10.0
+      fastify-plugin:
+        specifier: ^6.0.0
+        version: 6.0.0
     devDependencies:
       '@faios/eslint-config':
         specifier: workspace:*

@@ -54,12 +54,20 @@ enum MemoryKind {
   SUMMARY
 }
 
+enum FounderSessionStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
 model FounderAccount {
   id             String                  @id @default(cuid())
   email          String                  @unique
   displayName    String?
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
+  authIdentities FounderAuthIdentity[]
+  sessions       FounderSession[]
   profile        FounderProfile?
   companyProfile CompanyProfile?
   integrations   IntegrationConnection[]
@@ -67,6 +75,43 @@ model FounderAccount {
   conversations  Conversation[]
   commands       Command[]
   memoryItems    MemoryItem[]
+}
+
+model FounderAuthIdentity {
+  id              String         @id @default(cuid())
+  founderId       String
+  founder         FounderAccount @relation(fields: [founderId], references: [id], onDelete: Cascade)
+  provider        String
+  providerSubject String
+  email           String
+  emailVerified   Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@unique([provider, providerSubject])
+  @@index([founderId])
+  @@index([email])
+}
+
+model FounderSession {
+  id         String               @id @default(cuid())
+  founderId  String
+  founder    FounderAccount       @relation(fields: [founderId], references: [id], onDelete: Cascade)
+  tokenHash  String               @unique
+  status     FounderSessionStatus @default(ACTIVE)
+  issuedAt   DateTime             @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  rotatedAt  DateTime?
+  lastSeenAt DateTime?
+  userAgent  String?
+  ipAddress  String?
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+
+  @@index([founderId, status])
+  @@index([tokenHash, status, expiresAt])
+  @@index([expiresAt])
 }
 
 model FounderProfile {

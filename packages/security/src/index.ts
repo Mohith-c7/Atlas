@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 
 const ALGORITHM = "aes-256-gcm";
@@ -94,4 +94,8 @@ export function redactSensitiveText(value: string): string {
     (redacted, pattern) => redacted.replace(pattern, "[REDACTED]"),
     value,
   );
+}
+
+export function hashSessionToken(token: string): string {
+  return createHash("sha256").update(token, "utf8").digest("hex");
 }

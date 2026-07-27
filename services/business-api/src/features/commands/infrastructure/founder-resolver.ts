@@ -1,10 +1,25 @@
 import type { PrismaClient } from "@faios/database";
+import { AppError } from "../../../lib/errors.js";
 import type { FounderSession } from "../../../lib/founder-session.js";
 
 export const resolveFounderAccount = async (
   database: PrismaClient,
   founderSession?: FounderSession,
 ) => {
+  if (founderSession?.source === "session") {
+    const founder = await database.founderAccount.findUnique({
+      where: {
+        id: founderSession.founderId,
+      },
+    });
+
+    if (!founder) {
+      throw new AppError("FOUNDER_NOT_FOUND", "Authenticated founder account was not found.", 401);
+    }
+
+    return founder;
+  }
+
   const founderId = founderSession?.founderId ?? process.env.DEV_FOUNDER_ID ?? "dev_founder";
   const founderEmail =
     founderSession?.email ?? process.env.DEV_FOUNDER_EMAIL ?? "founder@faios.local";

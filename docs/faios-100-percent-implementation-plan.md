@@ -471,14 +471,14 @@ The next engineering slice should be M9.1: production-shaped founder account and
 
 ### M9.1 Checklist
 
-- [ ] Add founder auth identity tables.
-- [ ] Add session tables.
-- [ ] Add Prisma migration.
-- [ ] Add Fastify auth middleware.
-- [ ] Add request context tests.
-- [ ] Keep development fallback behind explicit non-production config.
-- [ ] Add web auth client boundary without implementing final login screens.
-- [ ] Update docs and environment examples.
+- [x] Add founder auth identity tables.
+- [x] Add session tables.
+- [x] Add Prisma migration.
+- [x] Add Fastify auth middleware.
+- [x] Add request context tests.
+- [x] Keep development fallback behind explicit non-production config.
+- [x] Add web auth client boundary without implementing final login screens.
+- [x] Update docs and environment examples.
 
 ### M9.1 Completion Gate
 

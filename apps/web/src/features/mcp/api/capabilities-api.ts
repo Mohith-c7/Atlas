@@ -5,20 +5,12 @@ import {
   type McpCapability,
   type McpCapabilityStatus,
 } from "../types/capability";
+import { apiFetch } from "../../../lib/api-client";
+import { businessApiUrl } from "../../../lib/config";
 
-const BUSINESS_API_URL =
-  process.env.NEXT_PUBLIC_BUSINESS_API_URL?.replace(/\/$/, "") ?? "http://localhost:4000";
-const MCP_CAPABILITIES_ENDPOINT = `${BUSINESS_API_URL}/api/v1/mcp/capabilities`;
+const MCP_CAPABILITIES_ENDPOINT = `${businessApiUrl}/api/v1/mcp/capabilities`;
 
 const capabilityStatuses = new Set<McpCapabilityStatus>(["available", "not_connected", "disabled"]);
-
-function createCorrelationId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `corr_${crypto.randomUUID()}`;
-  }
-
-  return `corr_${Date.now().toString(36)}`;
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object";
@@ -93,11 +85,7 @@ async function readJson(response: Response): Promise<unknown> {
 }
 
 export async function listMcpCapabilities(): Promise<ListMcpCapabilitiesResponse> {
-  const response = await fetch(MCP_CAPABILITIES_ENDPOINT, {
-    headers: {
-      "X-Correlation-Id": createCorrelationId(),
-    },
-  });
+  const response = await apiFetch(MCP_CAPABILITIES_ENDPOINT);
 
   const payload = await readJson(response);
 

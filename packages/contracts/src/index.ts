@@ -28,6 +28,22 @@ export const integrationProviderSchema = z.enum(["github"]);
 
 export const integrationConnectionStatusSchema = z.enum(["connected", "disconnected", "disabled"]);
 
+export const founderSessionSourceSchema = z.enum(["development", "session"]);
+
+export const currentFounderResponseSchema = z.object({
+  founder: z.object({
+    id: z.string(),
+    email: z.string().email(),
+    displayName: z.string().nullable().optional(),
+  }),
+  session: z.object({
+    id: z.string().nullable().optional(),
+    source: founderSessionSourceSchema,
+    expiresAt: z.string().nullable().optional(),
+  }),
+  correlationId: z.string(),
+});
+
 export const memoryKindSchema = z.enum([
   "founder_profile",
   "company_fact",
@@ -307,6 +323,7 @@ export type CommandExecutionTimelineItem = z.infer<typeof commandExecutionTimeli
 export type ConnectIntegrationResponse = z.infer<typeof connectIntegrationResponseSchema>;
 export type CreateCommandRequest = z.infer<typeof createCommandRequestSchema>;
 export type CreateCommandResponse = z.infer<typeof createCommandResponseSchema>;
+export type CurrentFounderResponse = z.infer<typeof currentFounderResponseSchema>;
 export type ExecutionPlan = z.infer<typeof executionPlanSchema>;
 export type ExecutionStep = z.infer<typeof executionStepSchema>;
 export type ExecutionJob = z.infer<typeof executionJobSchema>;

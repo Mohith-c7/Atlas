@@ -9,25 +9,17 @@ import {
   type StartGitHubOAuthRequest,
   type StartGitHubOAuthResponse,
 } from "../types/integration";
+import { apiFetch } from "../../../lib/api-client";
+import { businessApiUrl } from "../../../lib/config";
 
-const BUSINESS_API_URL =
-  process.env.NEXT_PUBLIC_BUSINESS_API_URL?.replace(/\/$/, "") ?? "http://localhost:4000";
-const INTEGRATION_CONNECTIONS_ENDPOINT = `${BUSINESS_API_URL}/api/v1/integrations/connections`;
-const GITHUB_CONNECTIONS_ENDPOINT = `${BUSINESS_API_URL}/api/v1/integrations/github/connections`;
-const GITHUB_OAUTH_START_ENDPOINT = `${BUSINESS_API_URL}/api/v1/integrations/github/oauth/start`;
+const INTEGRATION_CONNECTIONS_ENDPOINT = `${businessApiUrl}/api/v1/integrations/connections`;
+const GITHUB_CONNECTIONS_ENDPOINT = `${businessApiUrl}/api/v1/integrations/github/connections`;
+const GITHUB_OAUTH_START_ENDPOINT = `${businessApiUrl}/api/v1/integrations/github/oauth/start`;
 const connectionStatuses = new Set<IntegrationConnectionStatus>([
   "connected",
   "disconnected",
   "disabled",
 ]);
-
-function createCorrelationId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `corr_${crypto.randomUUID()}`;
-  }
-
-  return `corr_${Date.now().toString(36)}`;
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object";
@@ -109,11 +101,7 @@ function throwIntegrationError(
 }
 
 export async function listIntegrationConnections(): Promise<ListIntegrationConnectionsResponse> {
-  const response = await fetch(INTEGRATION_CONNECTIONS_ENDPOINT, {
-    headers: {
-      "X-Correlation-Id": createCorrelationId(),
-    },
-  });
+  const response = await apiFetch(INTEGRATION_CONNECTIONS_ENDPOINT);
 
   const payload = await readJson(response);
 
@@ -138,11 +126,10 @@ export async function listIntegrationConnections(): Promise<ListIntegrationConne
 export async function connectGitHubIntegration(
   request: ConnectGitHubIntegrationRequest,
 ): Promise<ConnectIntegrationResponse> {
-  const response = await fetch(GITHUB_CONNECTIONS_ENDPOINT, {
+  const response = await apiFetch(GITHUB_CONNECTIONS_ENDPOINT, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Correlation-Id": createCorrelationId(),
     },
     body: JSON.stringify(request),
   });
@@ -173,11 +160,10 @@ export async function connectGitHubIntegration(
 export async function startGitHubOAuth(
   request: StartGitHubOAuthRequest,
 ): Promise<StartGitHubOAuthResponse> {
-  const response = await fetch(GITHUB_OAUTH_START_ENDPOINT, {
+  const response = await apiFetch(GITHUB_OAUTH_START_ENDPOINT, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Correlation-Id": createCorrelationId(),
     },
     body: JSON.stringify(request),
   });

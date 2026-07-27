@@ -13,13 +13,13 @@ async function main() {
     founderId: `founder_a_${suffix}`,
     email: `founder-a-${suffix}@faios.local`,
     displayName: "Founder A",
-    source: "header",
+    source: "development",
   };
   const founderB: FounderSession = {
     founderId: `founder_b_${suffix}`,
     email: `founder-b-${suffix}@faios.local`,
     displayName: "Founder B",
-    source: "header",
+    source: "development",
   };
 
   process.env.FAIOS_ENCRYPTION_KEY = Buffer.alloc(32, "founder-session-test").toString("base64");
