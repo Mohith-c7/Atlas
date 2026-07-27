@@ -272,6 +272,19 @@ export const commandExecutionSnapshotEventSchema = z.object({
   emittedAt: z.string(),
 });
 
+export const healthComponentSchema = z.object({
+  status: z.enum(["ok", "degraded", "down"]),
+  latencyMs: z.number().nonnegative().optional(),
+  message: z.string().optional(),
+});
+
+export const healthResponseSchema = z.object({
+  service: z.string(),
+  status: z.enum(["ok", "degraded", "down"]),
+  checkedAt: z.string(),
+  components: z.record(healthComponentSchema).default({}),
+});
+
 export const apiErrorSchema = z.object({
   code: z.string(),
   message: z.string(),
@@ -328,6 +341,7 @@ export type ToolInvocation = z.infer<typeof toolInvocationSchema>;
 export type ToolInvocationStatus = z.infer<typeof toolInvocationStatusSchema>;
 export type VoiceTranscriptionRequest = z.infer<typeof voiceTranscriptionRequestSchema>;
 export type VoiceTranscriptionResponse = z.infer<typeof voiceTranscriptionResponseSchema>;
+export type HealthResponse = z.infer<typeof healthResponseSchema>;
 
 export const aiCommandRequestSchema = planCommandRequestSchema;
 export type AiCommandRequest = PlanCommandRequest;

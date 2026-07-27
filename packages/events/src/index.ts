@@ -11,6 +11,21 @@ export type DomainEventType =
   | "tool-invocation.completed"
   | "memory.updated";
 
+export type AuditAction =
+  | "command.create"
+  | "command.plan"
+  | "approval.decide"
+  | "integration.connect"
+  | "tool.execute"
+  | "memory.write";
+
+export type MetricName =
+  | "command_planning_duration_ms"
+  | "tool_execution_duration_ms"
+  | "approval_decision_total"
+  | "integration_connection_total"
+  | "memory_write_total";
+
 export interface DomainEventEnvelope<TPayload = unknown> {
   readonly eventId: string;
   readonly eventType: DomainEventType;
@@ -19,4 +34,22 @@ export interface DomainEventEnvelope<TPayload = unknown> {
   readonly occurredAt: string;
   readonly schemaVersion: number;
   readonly payload: TPayload;
+}
+
+export interface AuditEventEnvelope<TPayload = unknown> {
+  readonly eventId: string;
+  readonly action: AuditAction;
+  readonly founderId: FounderId;
+  readonly correlationId: CorrelationId;
+  readonly occurredAt: string;
+  readonly actor: "founder" | "system" | "worker";
+  readonly payload: TPayload;
+}
+
+export interface MetricEnvelope {
+  readonly metric: MetricName;
+  readonly value: number;
+  readonly unit: "count" | "milliseconds";
+  readonly recordedAt: string;
+  readonly dimensions: Record<string, string>;
 }

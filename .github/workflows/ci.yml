@@ -118,6 +118,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install AI Orchestrator dependencies
+        run: python -m pip install -e "services/ai-orchestrator[dev]"
+
       - name: Apply migrations
         run: pnpm --filter @faios/database exec prisma migrate deploy --schema prisma/schema.prisma
 
@@ -126,3 +133,6 @@ jobs:
 
       - name: Run execution integration test
         run: pnpm test:integration:execution
+
+      - name: Run GitHub command smoke
+        run: pnpm smoke:github:e2e

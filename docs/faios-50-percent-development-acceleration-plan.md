@@ -172,5 +172,5 @@ Each completed implementation slice must:
 - [x] Memory write/read foundation exists.
 - [x] Realtime execution updates exist.
 - [x] Voice input foundation exists.
-- [ ] Observability and readiness endpoints exist.
-- [ ] CI validates critical runtime paths.
+- [x] Observability and readiness endpoints exist.
+- [x] CI validates critical runtime paths.

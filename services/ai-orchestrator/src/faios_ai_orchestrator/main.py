@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from faios_ai_orchestrator.features.health.router import router as health_router
 from faios_ai_orchestrator.features.planning.router import router as planning_router
 from faios_ai_orchestrator.features.speech.router import router as speech_router
 
@@ -10,6 +11,7 @@ app = FastAPI(
     redoc_url=None,
 )
 
+app.include_router(health_router)
 app.include_router(planning_router)
 app.include_router(speech_router)
 
