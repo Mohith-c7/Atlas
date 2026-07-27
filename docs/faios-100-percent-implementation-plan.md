@@ -740,6 +740,28 @@ M11.2 adds planner regression evals for capability selection and approval behavi
 - `pnpm test`
 - `pnpm build`
 
+## Eleventh Next Implementation Slice
+
+M12.1 adds browser voice capture hardening for the founder command surface.
+
+### M12.1 Checklist
+
+- [x] Add explicit voice capture lifecycle states.
+- [x] Request microphone access before capture starts.
+- [x] Capture local audio chunks with `MediaRecorder`.
+- [x] Maintain transcript state from browser speech recognition.
+- [x] Add retry, cancel, and cleanup flows.
+- [x] Show microphone/capture status in the founder command panel.
+- [x] Submit completed transcripts as `source: "voice"` commands.
+
+### M12.1 Completion Gate
+
+- `pnpm format:check`
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm test`
+- `pnpm build`
+
 ## Out Of Scope For V1
 
 - Team workspaces.

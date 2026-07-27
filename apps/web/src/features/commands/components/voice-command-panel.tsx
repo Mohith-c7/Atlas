@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CreateCommandResponse } from "../types/command";
 import { useCreateCommand } from "../hooks/use-create-command";
 
@@ -17,18 +17,24 @@ type BrowserSpeechRecognitionEvent = Event & {
   };
 };
 
+type BrowserSpeechRecognitionErrorEvent = Event & {
+  readonly error?: string;
+};
+
 type BrowserSpeechRecognition = EventTarget & {
   continuous: boolean;
   interimResults: boolean;
   lang: string;
   onend: (() => void) | null;
-  onerror: ((event: Event) => void) | null;
+  onerror: ((event: BrowserSpeechRecognitionErrorEvent) => void) | null;
   onresult: ((event: BrowserSpeechRecognitionEvent) => void) | null;
   start(): void;
   stop(): void;
 };
 
 type SpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
+type CaptureState = "idle" | "requesting_permission" | "recording" | "stopping" | "ready" | "error";
+type MicrophonePermission = "unknown" | "granted" | "denied" | "unsupported";
 
 declare global {
   interface Window {
@@ -45,6 +51,48 @@ function getSpeechRecognitionConstructor(): SpeechRecognitionConstructor | undef
   return window.SpeechRecognition ?? window.webkitSpeechRecognition;
 }
 
+function isMediaRecorderSupported() {
+  return typeof window !== "undefined" && "MediaRecorder" in window;
+}
+
+function getMicrophoneErrorMessage(error: unknown) {
+  if (error instanceof DOMException) {
+    if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+      return "Microphone permission was denied. Allow microphone access and try again.";
+    }
+
+    if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
+      return "No microphone was found on this device.";
+    }
+
+    if (error.name === "NotReadableError" || error.name === "TrackStartError") {
+      return "The microphone is already in use by another app.";
+    }
+  }
+
+  return "Unable to start microphone capture. Please try again.";
+}
+
+function getSpeechRecognitionErrorMessage(event: BrowserSpeechRecognitionErrorEvent) {
+  switch (event.error) {
+    case "not-allowed":
+    case "service-not-allowed":
+      return "Speech recognition permission was denied.";
+    case "audio-capture":
+      return "Speech recognition could not access the microphone.";
+    case "network":
+      return "Speech recognition lost network access.";
+    case "no-speech":
+      return "No speech was detected. Try again when you are ready.";
+    default:
+      return "Voice capture stopped before a transcript was ready.";
+  }
+}
+
+function normalizeTranscript(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
 function VoiceResult({ result }: Readonly<{ result: CreateCommandResponse }>) {
   return (
     <div className="rounded-md border border-border bg-background p-3 text-sm">
@@ -56,24 +104,59 @@ function VoiceResult({ result }: Readonly<{ result: CreateCommandResponse }>) {
 
 export function VoiceCommandPanel() {
   const recognitionRef = useRef<BrowserSpeechRecognition | undefined>(undefined);
+  const recorderRef = useRef<MediaRecorder | undefined>(undefined);
+  const streamRef = useRef<MediaStream | undefined>(undefined);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const finalTranscriptRef = useRef("");
   const [transcript, setTranscript] = useState("");
   const [conversationId, setConversationId] = useState<string | undefined>();
-  const [isListening, setIsListening] = useState(false);
+  const [captureState, setCaptureState] = useState<CaptureState>("idle");
+  const [microphonePermission, setMicrophonePermission] = useState<MicrophonePermission>("unknown");
   const [lastResult, setLastResult] = useState<CreateCommandResponse | undefined>();
   const [voiceError, setVoiceError] = useState<string | undefined>();
   const createCommand = useCreateCommand();
 
   const speechSupported = Boolean(getSpeechRecognitionConstructor());
+  const recordingSupported = isMediaRecorderSupported();
+  const captureSupported = speechSupported && recordingSupported;
   const trimmedTranscript = transcript.trim();
-  const canSend = trimmedTranscript.length > 0 && !createCommand.isPending;
+  const isRecording = captureState === "recording";
+  const isBusy =
+    captureState === "requesting_permission" ||
+    captureState === "stopping" ||
+    isRecording ||
+    createCommand.isPending;
+  const canSend = trimmedTranscript.length > 0 && !isBusy;
+
+  const characterCount = transcript.length;
 
   const statusText = useMemo(() => {
-    if (!speechSupported) {
-      return "Browser speech recognition unavailable";
+    if (!recordingSupported) {
+      return "Voice recording unavailable";
     }
 
-    if (isListening) {
-      return "Listening";
+    if (!speechSupported) {
+      return "Transcript unavailable";
+    }
+
+    if (captureState === "requesting_permission") {
+      return "Requesting microphone";
+    }
+
+    if (captureState === "recording") {
+      return "Recording";
+    }
+
+    if (captureState === "stopping") {
+      return "Preparing transcript";
+    }
+
+    if (captureState === "ready") {
+      return "Transcript ready";
+    }
+
+    if (captureState === "error") {
+      return "Needs attention";
     }
 
     if (createCommand.isPending) {
@@ -81,44 +164,160 @@ export function VoiceCommandPanel() {
     }
 
     return "Ready";
-  }, [createCommand.isPending, isListening, speechSupported]);
+  }, [captureState, createCommand.isPending, recordingSupported, speechSupported]);
 
-  function startListening() {
+  function stopActiveCapture() {
+    recognitionRef.current?.stop();
+    recognitionRef.current = undefined;
+
+    const recorder = recorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+    }
+    recorderRef.current = undefined;
+
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = undefined;
+  }
+
+  useEffect(() => {
+    return () => stopActiveCapture();
+  }, []);
+
+  async function startCapture() {
     const Recognition = getSpeechRecognitionConstructor();
 
-    if (!Recognition) {
-      setVoiceError("Voice capture is not available in this browser.");
+    if (!recordingSupported || !navigator.mediaDevices?.getUserMedia) {
+      setMicrophonePermission("unsupported");
+      setCaptureState("error");
+      setVoiceError("Voice recording is not available in this browser.");
       return;
     }
 
-    const recognition = new Recognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = "en-US";
-    recognition.onend = () => setIsListening(false);
-    recognition.onerror = () => {
-      setIsListening(false);
-      setVoiceError("Voice capture stopped before a transcript was ready.");
-    };
-    recognition.onresult = (event) => {
-      let nextTranscript = "";
+    if (!Recognition) {
+      setCaptureState("error");
+      setVoiceError(
+        "This browser cannot create a local voice transcript. Use a browser with speech recognition support.",
+      );
+      return;
+    }
 
-      for (let index = 0; index < event.results.length; index += 1) {
-        nextTranscript += event.results[index]?.[0]?.transcript ?? "";
-      }
-
-      setTranscript(nextTranscript.trim());
-    };
-
-    recognitionRef.current = recognition;
+    stopActiveCapture();
+    audioChunksRef.current = [];
+    finalTranscriptRef.current = "";
+    setTranscript("");
     setVoiceError(undefined);
-    setIsListening(true);
-    recognition.start();
+    setCaptureState("requesting_permission");
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      setMicrophonePermission("granted");
+
+      const recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      recorder.onerror = () => {
+        setCaptureState("error");
+        setVoiceError("Audio recording failed. Please retry.");
+        stopActiveCapture();
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        const nextState = normalizeTranscript(finalTranscriptRef.current) ? "ready" : "error";
+        setCaptureState(nextState);
+
+        if (nextState === "error") {
+          setVoiceError("No transcript was captured. Please retry and speak clearly.");
+        }
+      };
+
+      const recognition = new Recognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = "en-US";
+      recognition.onerror = (event) => {
+        const message = getSpeechRecognitionErrorMessage(event);
+        setVoiceError(message);
+
+        if (message.includes("permission")) {
+          setMicrophonePermission("denied");
+        }
+      };
+      recognition.onresult = (event) => {
+        let interimTranscript = "";
+
+        for (let index = event.resultIndex; index < event.results.length; index += 1) {
+          const result = event.results[index];
+          const text = result?.[0]?.transcript ?? "";
+
+          if (result?.isFinal) {
+            finalTranscriptRef.current = normalizeTranscript(
+              `${finalTranscriptRef.current} ${text}`,
+            );
+          } else {
+            interimTranscript = `${interimTranscript} ${text}`;
+          }
+        }
+
+        setTranscript(normalizeTranscript(`${finalTranscriptRef.current} ${interimTranscript}`));
+      };
+      recognition.onend = () => {
+        if (recorder.state === "recording") {
+          return;
+        }
+
+        setTranscript((currentTranscript) =>
+          normalizeTranscript(currentTranscript || finalTranscriptRef.current),
+        );
+      };
+
+      recorderRef.current = recorder;
+      recognitionRef.current = recognition;
+      recorder.start(250);
+      recognition.start();
+      setCaptureState("recording");
+    } catch (error) {
+      setMicrophonePermission(error instanceof DOMException ? "denied" : "unknown");
+      setCaptureState("error");
+      setVoiceError(getMicrophoneErrorMessage(error));
+      stopActiveCapture();
+    }
   }
 
-  function stopListening() {
+  function stopCapture() {
+    if (captureState !== "recording") {
+      return;
+    }
+
+    setCaptureState("stopping");
     recognitionRef.current?.stop();
-    setIsListening(false);
+    recognitionRef.current = undefined;
+
+    const recorder = recorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+      return;
+    }
+
+    setCaptureState(trimmedTranscript ? "ready" : "error");
+  }
+
+  function cancelCapture() {
+    stopActiveCapture();
+    audioChunksRef.current = [];
+    finalTranscriptRef.current = "";
+    setTranscript("");
+    setVoiceError(undefined);
+    setCaptureState("idle");
+  }
+
+  function retryCapture() {
+    cancelCapture();
+    void startCapture();
   }
 
   function sendVoiceCommand() {
@@ -137,6 +336,9 @@ export function VoiceCommandPanel() {
           setConversationId(result.conversationId);
           setLastResult(result);
           setTranscript("");
+          setCaptureState("idle");
+          finalTranscriptRef.current = "";
+          audioChunksRef.current = [];
         },
       },
     );
@@ -158,24 +360,51 @@ export function VoiceCommandPanel() {
         <p className="min-h-16 text-sm leading-6 text-foreground">
           {transcript || "Your transcript will appear here."}
         </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3 text-xs text-muted">
+          <span>{characterCount}/1000 characters</span>
+          <span className="rounded-full border border-border bg-white px-2 py-0.5 capitalize">
+            Mic {microphonePermission.replace("_", " ")}
+          </span>
+          {audioChunksRef.current.length > 0 ? (
+            <span className="rounded-full border border-border bg-white px-2 py-0.5">
+              Audio captured
+            </span>
+          ) : null}
+        </div>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           className="inline-flex min-h-10 items-center justify-center rounded-md border border-border bg-background px-4 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={!speechSupported || isListening || createCommand.isPending}
-          onClick={startListening}
+          disabled={!captureSupported || isBusy}
+          onClick={() => void startCapture()}
           type="button"
         >
-          Start
+          Start recording
         </button>
         <button
           className="inline-flex min-h-10 items-center justify-center rounded-md border border-border bg-background px-4 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={!isListening}
-          onClick={stopListening}
+          disabled={!isRecording}
+          onClick={stopCapture}
           type="button"
         >
           Stop
+        </button>
+        <button
+          className="inline-flex min-h-10 items-center justify-center rounded-md border border-border bg-background px-4 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={createCommand.isPending || captureState === "idle"}
+          onClick={cancelCapture}
+          type="button"
+        >
+          Cancel
+        </button>
+        <button
+          className="inline-flex min-h-10 items-center justify-center rounded-md border border-border bg-background px-4 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={!captureSupported || createCommand.isPending || isRecording}
+          onClick={() => void retryCapture()}
+          type="button"
+        >
+          Retry
         </button>
         <button
           className="inline-flex min-h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted"
