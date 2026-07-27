@@ -25,6 +25,18 @@ export class ExecutionWorker {
   public async runOnce(): Promise<ExecutionWorkerRunResult> {
     const job = await this.repository.claimNextPendingInvocation();
 
+    return this.processClaimedJob(job);
+  }
+
+  public async runInvocation(invocationId: string): Promise<ExecutionWorkerRunResult> {
+    const job = await this.repository.claimPendingInvocationById(invocationId);
+
+    return this.processClaimedJob(job);
+  }
+
+  private async processClaimedJob(
+    job: Awaited<ReturnType<ExecutionRepository["claimNextPendingInvocation"]>>,
+  ): Promise<ExecutionWorkerRunResult> {
     if (!job) {
       return { processed: false };
     }

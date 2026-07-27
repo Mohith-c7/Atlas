@@ -7,9 +7,18 @@ export class ExecutionRepository {
   public constructor(private readonly database: PrismaClient) {}
 
   public async claimNextPendingInvocation(): Promise<ExecutionJob | undefined> {
+    return this.claimPendingInvocation();
+  }
+
+  public async claimPendingInvocationById(invocationId: string): Promise<ExecutionJob | undefined> {
+    return this.claimPendingInvocation(invocationId);
+  }
+
+  private async claimPendingInvocation(invocationId?: string): Promise<ExecutionJob | undefined> {
     return this.database.$transaction(async (transaction) => {
       const invocation = await transaction.toolInvocation.findFirst({
         where: {
+          ...(invocationId ? { id: invocationId } : {}),
           status: "PENDING",
         },
         orderBy: {

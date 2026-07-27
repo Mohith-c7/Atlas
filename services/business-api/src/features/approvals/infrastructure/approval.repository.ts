@@ -1,11 +1,17 @@
 import {
   executionStepSchema,
+  type ExecutionJob,
   type ApprovalRequest as ApprovalContract,
   type ApprovalStatus,
 } from "@faios/contracts";
 import type { Prisma, PrismaClient } from "@faios/database";
 
 type ApprovalDecision = "APPROVED" | "REJECTED";
+
+type ApprovalDecisionResult = {
+  approval: ApprovalContract;
+  executionJobs: ExecutionJob[];
+};
 
 const toContractStatus = (status: string): ApprovalStatus => status.toLowerCase() as ApprovalStatus;
 
@@ -53,7 +59,7 @@ export class ApprovalRepository {
     founderId: string,
     approvalId: string,
     decision: ApprovalDecision,
-  ): Promise<ApprovalContract | undefined> {
+  ): Promise<ApprovalDecisionResult | undefined> {
     return this.database.$transaction(async (transaction) => {
       const existing = await transaction.approvalRequest.findFirst({
         where: {
@@ -69,11 +75,17 @@ export class ApprovalRepository {
       }
 
       if (existing.status === decision) {
-        return toApprovalContract(existing);
+        return {
+          approval: toApprovalContract(existing),
+          executionJobs: [],
+        };
       }
 
       if (existing.status !== "PENDING") {
-        return toApprovalContract(existing);
+        return {
+          approval: toApprovalContract(existing),
+          executionJobs: [],
+        };
       }
 
       const updated = await transaction.approvalRequest.update({
@@ -95,11 +107,22 @@ export class ApprovalRepository {
             status: "CANCELLED",
           },
         });
+        return {
+          approval: toApprovalContract(updated),
+          executionJobs: [],
+        };
       } else {
-        await this.enqueueCommandInvocationsIfReady(transaction, founderId, existing.commandId);
-      }
+        const executionJobs = await this.enqueueCommandInvocationsIfReady(
+          transaction,
+          founderId,
+          existing.commandId,
+        );
 
-      return toApprovalContract(updated);
+        return {
+          approval: toApprovalContract(updated),
+          executionJobs,
+        };
+      }
     });
   }
 
@@ -107,7 +130,7 @@ export class ApprovalRepository {
     transaction: ApprovalTransaction,
     founderId: string,
     commandId: string,
-  ): Promise<void> {
+  ): Promise<ExecutionJob[]> {
     const command = await transaction.command.findFirst({
       where: {
         id: commandId,
@@ -121,7 +144,7 @@ export class ApprovalRepository {
     });
 
     if (!command?.plan || command.invocations.length > 0) {
-      return;
+      return [];
     }
 
     const hasOpenApproval = command.approvals.some((approval) => approval.status === "PENDING");
@@ -130,7 +153,7 @@ export class ApprovalRepository {
     );
 
     if (hasOpenApproval || hasRejectedApproval) {
-      return;
+      return [];
     }
 
     const parsedSteps = executionStepSchema.array().safeParse(command.plan.steps);
@@ -146,25 +169,29 @@ export class ApprovalRepository {
           errorMessage: "Execution plan did not contain executable steps.",
         },
       });
-      return;
+      return [];
     }
 
-    await transaction.toolInvocation.createMany({
-      data: parsedSteps.data.map((step) => ({
-        commandId,
-        capabilityKey: step.capability,
-        provider: step.provider ?? null,
-        status: "PENDING",
-        requestPayload: {
-          capability: step.capability,
-          provider: step.provider,
-          reason: step.reason,
-          requiresApproval: step.requiresApproval,
-          commandSummary: command.summary,
-          planId: command.plan?.id,
-        },
-      })),
-    });
+    const invocations = await Promise.all(
+      parsedSteps.data.map((step) =>
+        transaction.toolInvocation.create({
+          data: {
+            commandId,
+            capabilityKey: step.capability,
+            provider: step.provider ?? null,
+            status: "PENDING",
+            requestPayload: {
+              capability: step.capability,
+              provider: step.provider,
+              reason: step.reason,
+              requiresApproval: step.requiresApproval,
+              commandSummary: command.summary,
+              planId: command.plan?.id,
+            },
+          },
+        }),
+      ),
+    );
 
     await transaction.command.update({
       where: {
@@ -174,5 +201,14 @@ export class ApprovalRepository {
         status: "EXECUTING",
       },
     });
+
+    return invocations.map((invocation) => ({
+      invocationId: invocation.id,
+      commandId: invocation.commandId,
+      founderId,
+      capabilityKey: invocation.capabilityKey,
+      provider: invocation.provider,
+      requestPayload: invocation.requestPayload ?? undefined,
+    }));
   }
 }

@@ -93,6 +93,8 @@ This plan intentionally avoids team membership, organization tenancy, RBAC, and 
 - Keep database records as source of truth.
 - Worker consumers should use queue messages as wake-up hints, not exclusive state.
 - Messages must include invocation ID, command ID, founder ID, correlation ID, and schema version.
+- RabbitMQ dispatch is opt-in for local development with `EXECUTION_DISPATCH_ENABLED=true`.
+- Worker consumption is opt-in with `WORKER_RABBITMQ_CONSUMER_ENABLED=true`.
 
 ## Phase 3: Retry And Backoff
 

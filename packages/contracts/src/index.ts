@@ -129,6 +129,22 @@ export const executionJobSchema = z.object({
   requestPayload: z.unknown().optional(),
 });
 
+export const executionDispatchExchange = "faios.execution";
+export const executionDispatchQueue = "faios.execution.invocations";
+export const executionDispatchRoutingKey = "execution.invocation.queued";
+
+export const executionDispatchMessageSchema = z.object({
+  schemaVersion: z.literal(1),
+  eventType: z.literal("execution.invocation.queued"),
+  invocationId: z.string(),
+  commandId: z.string(),
+  founderId: z.string(),
+  capabilityKey: z.string(),
+  provider: z.string().nullable().optional(),
+  correlationId: z.string().optional(),
+  enqueuedAt: z.string(),
+});
+
 export const commandExecutionTimelineItemSchema = z.object({
   commandId: z.string(),
   status: commandStatusSchema,
@@ -167,6 +183,7 @@ export type CreateCommandResponse = z.infer<typeof createCommandResponseSchema>;
 export type ExecutionPlan = z.infer<typeof executionPlanSchema>;
 export type ExecutionStep = z.infer<typeof executionStepSchema>;
 export type ExecutionJob = z.infer<typeof executionJobSchema>;
+export type ExecutionDispatchMessage = z.infer<typeof executionDispatchMessageSchema>;
 export type ListCapabilitiesResponse = z.infer<typeof listCapabilitiesResponseSchema>;
 export type ListCommandExecutionsResponse = z.infer<typeof listCommandExecutionsResponseSchema>;
 export type ListApprovalsResponse = z.infer<typeof listApprovalsResponseSchema>;

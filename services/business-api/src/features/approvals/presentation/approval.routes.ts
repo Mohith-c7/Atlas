@@ -38,7 +38,11 @@ export const approvalRoutes: FastifyPluginCallback = (server, _options, done) =>
       const useCase = new DecideApprovalUseCase(getPrismaClient());
 
       try {
-        const response = await useCase.execute(request.params.approvalId, "APPROVED");
+        const response = await useCase.execute(
+          request.params.approvalId,
+          "APPROVED",
+          request.correlationId,
+        );
         request.log.info(
           {
             approvalId: response.approval.id,
@@ -65,7 +69,11 @@ export const approvalRoutes: FastifyPluginCallback = (server, _options, done) =>
       const useCase = new DecideApprovalUseCase(getPrismaClient());
 
       try {
-        const response = await useCase.execute(request.params.approvalId, "REJECTED");
+        const response = await useCase.execute(
+          request.params.approvalId,
+          "REJECTED",
+          request.correlationId,
+        );
         request.log.info(
           {
             approvalId: response.approval.id,
