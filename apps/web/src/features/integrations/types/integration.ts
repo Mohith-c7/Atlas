@@ -16,6 +16,48 @@ export type IntegrationConnection = {
   updatedAt: string;
 };
 
+export type McpCapabilitySummary = {
+  key: string;
+  provider: string;
+  label: string;
+  description: string;
+  requiresApproval: boolean;
+  status: "available" | "not_connected" | "disabled";
+};
+
+export type IntegrationCatalogItem = {
+  provider: string;
+  label: string;
+  status: "available" | "coming_soon";
+  capabilities: McpCapabilitySummary[];
+  connection?: IntegrationConnection | null;
+};
+
+export type ListIntegrationCatalogResponse = {
+  integrations: IntegrationCatalogItem[];
+  correlationId: string;
+};
+
+export type ProviderCapabilityReadiness = {
+  capabilityKey: string;
+  status: "ready" | "not_ready";
+  reason?: string;
+  checkedAt: string;
+};
+
+export type IntegrationProviderStatus = {
+  provider: string;
+  connected: boolean;
+  connection?: IntegrationConnection | null;
+  capabilities: ProviderCapabilityReadiness[];
+  checkedAt: string;
+};
+
+export type GetIntegrationProviderStatusResponse = {
+  provider: IntegrationProviderStatus;
+  correlationId: string;
+};
+
 export type ConnectGitHubIntegrationRequest = {
   accountLabel?: string;
   owner: string;

@@ -570,6 +570,32 @@ M9.4 adds Stripe checkout, billing portal, and verified webhook synchronization 
 - `pnpm build`
 - `pnpm --filter @faios/business-api test:integration`
 
+## Fifth Next Implementation Slice
+
+M10.1 starts the integration lifecycle platform with catalog and provider status/readiness APIs.
+
+### M10.1 Checklist
+
+- [x] Add integration catalog contracts.
+- [x] Add provider status/readiness contracts.
+- [x] Add business API credential resolver for MCP readiness.
+- [x] Add integration catalog use case.
+- [x] Add provider status use case.
+- [x] Add catalog endpoint.
+- [x] Add provider status endpoint.
+- [x] Add web integration catalog client boundary.
+- [x] Add web integration catalog panel.
+- [x] Add integration catalog/status regression test.
+
+### M10.1 Completion Gate
+
+- `pnpm format:check`
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm test`
+- `pnpm build`
+- `pnpm --filter @faios/business-api test:integration`
+
 ## Out Of Scope For V1
 
 - Team workspaces.

@@ -7,6 +7,8 @@ import type { FastifyPluginCallback } from "fastify";
 import { sendError } from "../../../lib/errors.js";
 import { CompleteGitHubOAuthUseCase } from "../application/complete-github-oauth.use-case.js";
 import { ConnectGitHubIntegrationUseCase } from "../application/connect-github-integration.use-case.js";
+import { GetIntegrationProviderStatusUseCase } from "../application/get-integration-provider-status.use-case.js";
+import { ListIntegrationCatalogUseCase } from "../application/list-integration-catalog.use-case.js";
 import { ListIntegrationConnectionsUseCase } from "../application/list-integration-connections.use-case.js";
 import { StartGitHubOAuthUseCase } from "../application/start-github-oauth.use-case.js";
 
@@ -15,6 +17,54 @@ function getQueryValue(value: unknown): string | undefined {
 }
 
 export const integrationRoutes: FastifyPluginCallback = (server, _options, done) => {
+  server.get("/api/v1/integrations/catalog", async (request, reply) => {
+    const useCase = new ListIntegrationCatalogUseCase(getPrismaClient());
+
+    try {
+      return reply
+        .status(200)
+        .send(await useCase.execute(request.founderSession, request.correlationId));
+    } catch (error) {
+      request.log.error(
+        {
+          correlationId: request.correlationId,
+          error,
+        },
+        "Failed to list integration catalog",
+      );
+
+      return sendError(reply, error, request.correlationId);
+    }
+  });
+
+  server.get<{ Params: { provider: string } }>(
+    "/api/v1/integrations/providers/:provider/status",
+    async (request, reply) => {
+      const useCase = new GetIntegrationProviderStatusUseCase(getPrismaClient());
+
+      try {
+        return reply.status(200).send(
+          await useCase.execute({
+            founderSession: request.founderSession,
+            provider: request.params.provider,
+            correlationId: request.correlationId,
+          }),
+        );
+      } catch (error) {
+        request.log.error(
+          {
+            provider: request.params.provider,
+            correlationId: request.correlationId,
+            error,
+          },
+          "Failed to get integration provider status",
+        );
+
+        return sendError(reply, error, request.correlationId);
+      }
+    },
+  );
+
   server.get("/api/v1/integrations/connections", async (request, reply) => {
     const useCase = new ListIntegrationConnectionsUseCase(getPrismaClient());
 

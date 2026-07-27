@@ -2,10 +2,13 @@ import {
   IntegrationApiError,
   type ConnectGitHubIntegrationRequest,
   type ConnectIntegrationResponse,
+  type GetIntegrationProviderStatusResponse,
   type IntegrationApiErrorResponse,
+  type IntegrationCatalogItem,
   type IntegrationConnection,
   type IntegrationConnectionStatus,
   type ListIntegrationConnectionsResponse,
+  type ListIntegrationCatalogResponse,
   type StartGitHubOAuthRequest,
   type StartGitHubOAuthResponse,
 } from "../types/integration";
@@ -13,6 +16,8 @@ import { apiFetch } from "../../../lib/api-client";
 import { businessApiUrl } from "../../../lib/config";
 
 const INTEGRATION_CONNECTIONS_ENDPOINT = `${businessApiUrl}/api/v1/integrations/connections`;
+const INTEGRATION_CATALOG_ENDPOINT = `${businessApiUrl}/api/v1/integrations/catalog`;
+const INTEGRATION_PROVIDERS_ENDPOINT = `${businessApiUrl}/api/v1/integrations/providers`;
 const GITHUB_CONNECTIONS_ENDPOINT = `${businessApiUrl}/api/v1/integrations/github/connections`;
 const GITHUB_OAUTH_START_ENDPOINT = `${businessApiUrl}/api/v1/integrations/github/oauth/start`;
 const connectionStatuses = new Set<IntegrationConnectionStatus>([
@@ -62,6 +67,35 @@ function normalizeConnection(value: unknown): IntegrationConnection | undefined 
     metadata: isRecord(value.metadata) ? value.metadata : undefined,
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
+  };
+}
+
+function normalizeCatalogItem(value: unknown): IntegrationCatalogItem | undefined {
+  if (!isRecord(value) || typeof value.provider !== "string" || typeof value.label !== "string") {
+    return undefined;
+  }
+
+  if (value.status !== "available" && value.status !== "coming_soon") {
+    return undefined;
+  }
+
+  return {
+    provider: value.provider,
+    label: value.label,
+    status: value.status,
+    capabilities: Array.isArray(value.capabilities)
+      ? value.capabilities.filter(
+          (capability): capability is IntegrationCatalogItem["capabilities"][number] =>
+            isRecord(capability) &&
+            typeof capability.key === "string" &&
+            typeof capability.provider === "string" &&
+            typeof capability.label === "string" &&
+            typeof capability.description === "string" &&
+            typeof capability.requiresApproval === "boolean" &&
+            typeof capability.status === "string",
+        )
+      : [],
+    connection: normalizeConnection(value.connection),
   };
 }
 
@@ -121,6 +155,43 @@ export async function listIntegrationConnections(): Promise<ListIntegrationConne
     correlationId:
       isRecord(payload) && typeof payload.correlationId === "string" ? payload.correlationId : "",
   };
+}
+
+export async function listIntegrationCatalog(): Promise<ListIntegrationCatalogResponse> {
+  const response = await apiFetch(INTEGRATION_CATALOG_ENDPOINT);
+  const payload = await readJson(response);
+
+  if (!response.ok) {
+    throwIntegrationError(payload, response.status, "Unable to load integration catalog.");
+  }
+
+  const integrations =
+    isRecord(payload) && Array.isArray(payload.integrations)
+      ? payload.integrations
+          .map((item) => normalizeCatalogItem(item))
+          .filter((item): item is IntegrationCatalogItem => Boolean(item))
+      : [];
+
+  return {
+    integrations,
+    correlationId:
+      isRecord(payload) && typeof payload.correlationId === "string" ? payload.correlationId : "",
+  };
+}
+
+export async function getIntegrationProviderStatus(
+  provider: string,
+): Promise<GetIntegrationProviderStatusResponse> {
+  const response = await apiFetch(
+    `${INTEGRATION_PROVIDERS_ENDPOINT}/${encodeURIComponent(provider)}/status`,
+  );
+  const payload = await readJson(response);
+
+  if (!response.ok) {
+    throwIntegrationError(payload, response.status, "Unable to load provider status.");
+  }
+
+  return payload as GetIntegrationProviderStatusResponse;
 }
 
 export async function connectGitHubIntegration(

@@ -248,6 +248,39 @@ export const integrationConnectionSchema = z.object({
   updatedAt: z.string(),
 });
 
+export const integrationCatalogItemSchema = z.object({
+  provider: z.string(),
+  label: z.string(),
+  status: z.enum(["available", "coming_soon"]),
+  capabilities: z.array(mcpCapabilitySchema),
+  connection: integrationConnectionSchema.nullable().optional(),
+});
+
+export const listIntegrationCatalogResponseSchema = z.object({
+  integrations: z.array(integrationCatalogItemSchema),
+  correlationId: z.string(),
+});
+
+export const providerCapabilityReadinessSchema = z.object({
+  capabilityKey: z.string(),
+  status: z.enum(["ready", "not_ready"]),
+  reason: z.string().optional(),
+  checkedAt: z.string(),
+});
+
+export const integrationProviderStatusSchema = z.object({
+  provider: z.string(),
+  connected: z.boolean(),
+  connection: integrationConnectionSchema.nullable().optional(),
+  capabilities: z.array(providerCapabilityReadinessSchema),
+  checkedAt: z.string(),
+});
+
+export const getIntegrationProviderStatusResponseSchema = z.object({
+  provider: integrationProviderStatusSchema,
+  correlationId: z.string(),
+});
+
 export const connectIntegrationResponseSchema = z.object({
   connection: integrationConnectionSchema,
   correlationId: z.string(),
@@ -498,12 +531,18 @@ export type GitHubCreateIssueExecutionPayload = z.infer<
 >;
 export type IntegrationConnection = z.infer<typeof integrationConnectionSchema>;
 export type IntegrationConnectionStatus = z.infer<typeof integrationConnectionStatusSchema>;
+export type IntegrationCatalogItem = z.infer<typeof integrationCatalogItemSchema>;
+export type IntegrationProviderStatus = z.infer<typeof integrationProviderStatusSchema>;
 export type IntegrationProvider = z.infer<typeof integrationProviderSchema>;
 export type ListCapabilitiesResponse = z.infer<typeof listCapabilitiesResponseSchema>;
 export type ListCommandExecutionsResponse = z.infer<typeof listCommandExecutionsResponseSchema>;
 export type CommandExecutionSnapshotEvent = z.infer<typeof commandExecutionSnapshotEventSchema>;
 export type ListIntegrationConnectionsResponse = z.infer<
   typeof listIntegrationConnectionsResponseSchema
+>;
+export type ListIntegrationCatalogResponse = z.infer<typeof listIntegrationCatalogResponseSchema>;
+export type GetIntegrationProviderStatusResponse = z.infer<
+  typeof getIntegrationProviderStatusResponseSchema
 >;
 export type ListApprovalsResponse = z.infer<typeof listApprovalsResponseSchema>;
 export type MemoryContextItem = z.infer<typeof memoryContextItemSchema>;
