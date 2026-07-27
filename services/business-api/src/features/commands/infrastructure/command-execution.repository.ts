@@ -25,6 +25,9 @@ type CommandExecutionRecord = Awaited<ReturnType<PrismaClient["command"]["findMa
     responsePayload: unknown;
     errorCode: string | null;
     errorMessage: string | null;
+    retryCount: number;
+    maxRetries: number;
+    nextAttemptAt: Date | null;
     startedAt: Date | null;
     completedAt: Date | null;
     createdAt: Date;
@@ -43,6 +46,9 @@ const toToolInvocationContract = (
   responsePayload: invocation.responsePayload ?? undefined,
   errorCode: invocation.errorCode,
   errorMessage: invocation.errorMessage,
+  retryCount: invocation.retryCount,
+  maxRetries: invocation.maxRetries,
+  nextAttemptAt: invocation.nextAttemptAt ? toIsoString(invocation.nextAttemptAt) : null,
   startedAt: invocation.startedAt ? toIsoString(invocation.startedAt) : null,
   completedAt: invocation.completedAt ? toIsoString(invocation.completedAt) : null,
   createdAt: toIsoString(invocation.createdAt),

@@ -19,6 +19,9 @@ export type ToolInvocation = {
   responsePayload?: unknown;
   errorCode?: string | null;
   errorMessage?: string | null;
+  retryCount?: number;
+  maxRetries?: number;
+  nextAttemptAt?: string | null;
   startedAt?: string | null;
   completedAt?: string | null;
   createdAt: string;

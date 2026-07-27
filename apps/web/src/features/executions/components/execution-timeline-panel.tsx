@@ -47,6 +47,10 @@ function getExecutionSummary(invocation: ToolInvocation) {
   }
 
   if (invocation.status === "pending") {
+    if (invocation.nextAttemptAt) {
+      return `Retry scheduled for ${formatTime(invocation.nextAttemptAt)}.`;
+    }
+
     return "Waiting for the worker to claim this action.";
   }
 
@@ -87,6 +91,11 @@ function InvocationRow({ invocation }: { invocation: ToolInvocation }) {
         </span>
       </div>
       <p className="text-sm leading-6 text-muted">{getExecutionSummary(invocation)}</p>
+      {typeof invocation.retryCount === "number" && typeof invocation.maxRetries === "number" ? (
+        <p className="text-xs text-muted">
+          Attempt {invocation.retryCount + 1} of {invocation.maxRetries + 1}
+        </p>
+      ) : null}
       <p className="text-xs text-muted">
         {invocation.completedAt
           ? `Completed ${formatTime(invocation.completedAt)}`

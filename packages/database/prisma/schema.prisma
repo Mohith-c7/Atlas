@@ -197,12 +197,16 @@ model ToolInvocation {
   responsePayload Json?
   errorCode       String?
   errorMessage    String?
+  retryCount      Int                    @default(0)
+  maxRetries      Int                    @default(3)
+  nextAttemptAt   DateTime?
   startedAt       DateTime?
   completedAt     DateTime?
   createdAt       DateTime               @default(now())
 
   @@index([commandId, createdAt])
   @@index([capabilityKey, status])
+  @@index([status, nextAttemptAt])
 }
 
 model MemoryItem {

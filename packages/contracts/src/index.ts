@@ -115,6 +115,9 @@ export const toolInvocationSchema = z.object({
   responsePayload: z.unknown().optional(),
   errorCode: z.string().nullable().optional(),
   errorMessage: z.string().nullable().optional(),
+  retryCount: z.number().int().nonnegative().optional(),
+  maxRetries: z.number().int().nonnegative().optional(),
+  nextAttemptAt: z.string().nullable().optional(),
   startedAt: z.string().nullable().optional(),
   completedAt: z.string().nullable().optional(),
   createdAt: z.string(),
@@ -131,6 +134,8 @@ export const executionJobSchema = z.object({
 
 export const executionDispatchExchange = "faios.execution";
 export const executionDispatchQueue = "faios.execution.invocations";
+export const executionDispatchDeadLetterQueue = "faios.execution.invocations.dead-letter";
+export const executionDispatchDeadLetterRoutingKey = "execution.invocation.dead-lettered";
 export const executionDispatchRoutingKey = "execution.invocation.queued";
 
 export const executionDispatchMessageSchema = z.object({

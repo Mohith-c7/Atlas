@@ -1,5 +1,6 @@
 import type { ExecutionRepository } from "./execution.repository.js";
 import type { McpToolExecutor } from "./mcp-tool-executor.js";
+import { calculateRetryDecision } from "./retry-policy.js";
 
 type WorkerLogger = {
   info(payload: unknown, message: string): void;
@@ -12,7 +13,8 @@ export type ExecutionWorkerRunResult =
   | {
       readonly processed: true;
       readonly invocationId: string;
-      readonly status: "succeeded" | "failed";
+      readonly status: "succeeded" | "failed" | "retry_scheduled";
+      readonly nextAttemptAt?: string;
     };
 
 export class ExecutionWorker {
@@ -58,6 +60,30 @@ export class ExecutionWorker {
         processed: true,
         invocationId: job.invocationId,
         status: "succeeded",
+      };
+    }
+
+    const retryState = await this.repository.getInvocationRetryState(job.invocationId);
+    const retryDecision = calculateRetryDecision({
+      retryable: result.retryable,
+      retryCount: retryState?.retryCount ?? 0,
+      maxRetries: retryState?.maxRetries ?? 0,
+    });
+
+    if (retryDecision.shouldRetry) {
+      await this.repository.scheduleInvocationRetry(
+        job.invocationId,
+        result.errorCode,
+        result.errorMessage,
+        retryDecision.retryCount,
+        retryDecision.nextAttemptAt,
+      );
+
+      return {
+        processed: true,
+        invocationId: job.invocationId,
+        status: "retry_scheduled",
+        nextAttemptAt: retryDecision.nextAttemptAt.toISOString(),
       };
     }
 

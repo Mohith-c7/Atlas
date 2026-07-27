@@ -20,6 +20,16 @@ export class ExecutionRepository {
         where: {
           ...(invocationId ? { id: invocationId } : {}),
           status: "PENDING",
+          OR: [
+            {
+              nextAttemptAt: null,
+            },
+            {
+              nextAttemptAt: {
+                lte: new Date(),
+              },
+            },
+          ],
         },
         orderBy: {
           createdAt: "asc",
@@ -45,6 +55,7 @@ export class ExecutionRepository {
         data: {
           status: "RUNNING",
           startedAt: new Date(),
+          nextAttemptAt: null,
         },
       });
 
@@ -105,6 +116,44 @@ export class ExecutionRepository {
 
       await this.refreshCommandStatus(transaction, invocation.commandId);
     });
+  }
+
+  public async scheduleInvocationRetry(
+    invocationId: string,
+    errorCode: string,
+    errorMessage: string,
+    retryCount: number,
+    nextAttemptAt: Date,
+  ): Promise<void> {
+    await this.database.toolInvocation.update({
+      where: {
+        id: invocationId,
+      },
+      data: {
+        status: "PENDING",
+        errorCode,
+        errorMessage,
+        retryCount,
+        nextAttemptAt,
+        completedAt: null,
+      },
+    });
+  }
+
+  public async getInvocationRetryState(
+    invocationId: string,
+  ): Promise<{ retryCount: number; maxRetries: number } | undefined> {
+    const invocation = await this.database.toolInvocation.findUnique({
+      where: {
+        id: invocationId,
+      },
+      select: {
+        retryCount: true,
+        maxRetries: true,
+      },
+    });
+
+    return invocation ?? undefined;
   }
 
   private async refreshCommandStatus(

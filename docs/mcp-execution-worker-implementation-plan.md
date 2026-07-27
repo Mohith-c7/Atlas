@@ -103,6 +103,7 @@ This plan intentionally avoids team membership, organization tenancy, RBAC, and 
 - Retry only when the adapter declares the operation retry-safe.
 - Add exponential backoff with jitter.
 - Add dead-letter handling for exhausted retries.
+- Use DB polling for scheduled retries instead of requiring RabbitMQ delayed-message plugins.
 
 ## Phase 4: Real MCP Adapters
 

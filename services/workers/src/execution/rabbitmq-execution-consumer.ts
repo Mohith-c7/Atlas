@@ -1,4 +1,6 @@
 import {
+  executionDispatchDeadLetterQueue,
+  executionDispatchDeadLetterRoutingKey,
   executionDispatchExchange,
   executionDispatchMessageSchema,
   executionDispatchQueue,
@@ -28,9 +30,19 @@ export class RabbitMqExecutionConsumer {
     await channel.assertExchange(executionDispatchExchange, "direct", {
       durable: true,
     });
-    await channel.assertQueue(executionDispatchQueue, {
+    await channel.assertQueue(executionDispatchDeadLetterQueue, {
       durable: true,
     });
+    await channel.assertQueue(executionDispatchQueue, {
+      durable: true,
+      deadLetterExchange: executionDispatchExchange,
+      deadLetterRoutingKey: executionDispatchDeadLetterRoutingKey,
+    });
+    await channel.bindQueue(
+      executionDispatchDeadLetterQueue,
+      executionDispatchExchange,
+      executionDispatchDeadLetterRoutingKey,
+    );
     await channel.bindQueue(
       executionDispatchQueue,
       executionDispatchExchange,
@@ -85,7 +97,7 @@ export class RabbitMqExecutionConsumer {
         },
         "Execution dispatch message failed",
       );
-      channel.nack(message, false, true);
+      channel.nack(message, false, false);
     }
   }
 

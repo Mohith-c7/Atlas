@@ -81,6 +81,12 @@ function normalizeInvocation(value: unknown): ToolInvocation | undefined {
       typeof value.errorMessage === "string" || value.errorMessage === null
         ? value.errorMessage
         : undefined,
+    retryCount: typeof value.retryCount === "number" ? value.retryCount : undefined,
+    maxRetries: typeof value.maxRetries === "number" ? value.maxRetries : undefined,
+    nextAttemptAt:
+      typeof value.nextAttemptAt === "string" || value.nextAttemptAt === null
+        ? value.nextAttemptAt
+        : undefined,
     startedAt:
       typeof value.startedAt === "string" || value.startedAt === null ? value.startedAt : undefined,
     completedAt:

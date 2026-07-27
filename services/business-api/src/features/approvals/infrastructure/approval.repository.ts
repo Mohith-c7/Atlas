@@ -180,6 +180,7 @@ export class ApprovalRepository {
             capabilityKey: step.capability,
             provider: step.provider ?? null,
             status: "PENDING",
+            maxRetries: 3,
             requestPayload: {
               capability: step.capability,
               provider: step.provider,
