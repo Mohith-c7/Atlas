@@ -90,6 +90,8 @@ jobs:
     env:
       DATABASE_URL: postgresql://faios:faios@localhost:5432/faios_shadow?schema=public
       RABBITMQ_URL: amqp://faios:faios@localhost:5672
+      FAIOS_ENCRYPTION_KEY: YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=
+      FAIOS_ENCRYPTION_KEY_VERSION: ci-v1
     steps:
       - uses: actions/checkout@v4
 
@@ -105,6 +107,9 @@ jobs:
 
       - name: Apply migrations
         run: pnpm --filter @faios/database exec prisma migrate deploy --schema prisma/schema.prisma
+
+      - name: Run business API integration test
+        run: pnpm --filter @faios/business-api test:integration
 
       - name: Run execution integration test
         run: pnpm test:integration:execution

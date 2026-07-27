@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import { createLogger } from "@faios/logger";
 import { approvalRoutes } from "./features/approvals/index.js";
 import { commandRoutes } from "./features/commands/index.js";
+import { integrationRoutes } from "./features/integrations/index.js";
 import { mcpCapabilityRoutes } from "./features/mcp-capabilities/index.js";
 import { correlationPlugin } from "./lib/correlation.js";
 
@@ -14,6 +15,7 @@ await server.register(cors, {
 });
 await server.register(correlationPlugin);
 await server.register(approvalRoutes);
+await server.register(integrationRoutes);
 await server.register(mcpCapabilityRoutes);
 await server.register(commandRoutes);
 

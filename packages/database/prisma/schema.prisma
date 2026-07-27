@@ -108,6 +108,7 @@ model IntegrationConnection {
   credential     IntegrationCredential?
   invocations    ToolInvocation[]
 
+  @@unique([founderId, provider])
   @@index([founderId, provider])
 }
 

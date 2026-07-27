@@ -9,6 +9,7 @@
     "dev": "tsx watch src/main.ts",
     "lint": "eslint .",
     "test": "echo \"No tests yet\"",
+    "test:integration": "tsx src/integration/github-connection.integration.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

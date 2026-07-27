@@ -24,6 +24,10 @@ export const toolInvocationStatusSchema = z.enum([
   "cancelled",
 ]);
 
+export const integrationProviderSchema = z.enum(["github"]);
+
+export const integrationConnectionStatusSchema = z.enum(["connected", "disconnected", "disabled"]);
+
 export const mcpCapabilitySchema = z.object({
   key: z.string().min(1),
   provider: z.string().min(1),
@@ -35,6 +39,42 @@ export const mcpCapabilitySchema = z.object({
 
 export const listCapabilitiesResponseSchema = z.object({
   capabilities: z.array(mcpCapabilitySchema),
+});
+
+export const githubIntegrationConnectionRequestSchema = z.object({
+  accountLabel: z.string().min(1).max(120).optional(),
+  owner: z.string().min(1).max(120),
+  repo: z.string().min(1).max(120),
+  accessToken: z.string().min(1).max(512),
+  apiBaseUrl: z.string().url().default("https://api.github.com"),
+});
+
+export const integrationConnectionSchema = z.object({
+  id: z.string(),
+  provider: integrationProviderSchema,
+  accountLabel: z.string().nullable().optional(),
+  status: integrationConnectionStatusSchema,
+  capabilityKeys: z.array(z.string()),
+  metadata: z
+    .object({
+      owner: z.string().optional(),
+      repo: z.string().optional(),
+      apiBaseUrl: z.string().optional(),
+    })
+    .passthrough()
+    .optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const connectIntegrationResponseSchema = z.object({
+  connection: integrationConnectionSchema,
+  correlationId: z.string(),
+});
+
+export const listIntegrationConnectionsResponseSchema = z.object({
+  connections: z.array(integrationConnectionSchema),
+  correlationId: z.string(),
 });
 
 export const createCommandRequestSchema = z.object({
@@ -183,14 +223,24 @@ export type ApprovalStatus = z.infer<typeof approvalStatusSchema>;
 export type CommandSource = z.infer<typeof commandSourceSchema>;
 export type CommandStatus = z.infer<typeof commandStatusSchema>;
 export type CommandExecutionTimelineItem = z.infer<typeof commandExecutionTimelineItemSchema>;
+export type ConnectIntegrationResponse = z.infer<typeof connectIntegrationResponseSchema>;
 export type CreateCommandRequest = z.infer<typeof createCommandRequestSchema>;
 export type CreateCommandResponse = z.infer<typeof createCommandResponseSchema>;
 export type ExecutionPlan = z.infer<typeof executionPlanSchema>;
 export type ExecutionStep = z.infer<typeof executionStepSchema>;
 export type ExecutionJob = z.infer<typeof executionJobSchema>;
 export type ExecutionDispatchMessage = z.infer<typeof executionDispatchMessageSchema>;
+export type GitHubIntegrationConnectionRequest = z.infer<
+  typeof githubIntegrationConnectionRequestSchema
+>;
+export type IntegrationConnection = z.infer<typeof integrationConnectionSchema>;
+export type IntegrationConnectionStatus = z.infer<typeof integrationConnectionStatusSchema>;
+export type IntegrationProvider = z.infer<typeof integrationProviderSchema>;
 export type ListCapabilitiesResponse = z.infer<typeof listCapabilitiesResponseSchema>;
 export type ListCommandExecutionsResponse = z.infer<typeof listCommandExecutionsResponseSchema>;
+export type ListIntegrationConnectionsResponse = z.infer<
+  typeof listIntegrationConnectionsResponseSchema
+>;
 export type ListApprovalsResponse = z.infer<typeof listApprovalsResponseSchema>;
 export type McpCapability = z.infer<typeof mcpCapabilitySchema>;
 export type McpCapabilityStatus = z.infer<typeof mcpCapabilityStatusSchema>;
