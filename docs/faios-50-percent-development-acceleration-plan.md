@@ -168,7 +168,7 @@ Each completed implementation slice must:
 - [x] GitHub command runs end-to-end through local smoke.
 - [x] Founder identity boundary exists.
 - [x] GitHub OAuth foundation replaces manual token setup as the production path.
-- [ ] LangGraph planner foundation exists.
+- [x] LangGraph planner foundation exists.
 - [ ] Memory write/read foundation exists.
 - [ ] Realtime execution updates exist.
 - [ ] Voice input foundation exists.

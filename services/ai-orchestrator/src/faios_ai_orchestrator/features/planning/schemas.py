@@ -35,6 +35,9 @@ class PlanResponse(CamelModel):
     status: Literal["completed", "awaiting_approval", "failed"]
     summary: NonEmptyString
     steps: list[PlanStep]
+    steps_capability_context: list["AvailableCapability"] = Field(
+        default_factory=list, exclude=True
+    )
 
 
 class AvailableCapability(CamelModel):

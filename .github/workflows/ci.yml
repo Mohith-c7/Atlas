@@ -38,6 +38,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install AI Orchestrator dependencies
+        run: python -m pip install -e "services/ai-orchestrator[dev]"
+
       - name: Generate Prisma Client
         run: pnpm --filter @faios/database exec prisma generate --schema prisma/schema.prisma
 
@@ -55,6 +62,12 @@ jobs:
 
       - name: Prisma migration drift
         run: pnpm --filter @faios/database prisma:migrate:diff
+
+      - name: AI Orchestrator lint
+        run: python -m ruff check services/ai-orchestrator/src services/ai-orchestrator/tests
+
+      - name: AI Orchestrator tests
+        run: python -m pytest services/ai-orchestrator/tests
 
       - name: Build
         run: pnpm build
