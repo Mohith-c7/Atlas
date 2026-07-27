@@ -40,35 +40,45 @@ Retry count, maximum retries, and next-attempt time live on `ToolInvocation`. Th
 
 The web execution timeline reads command and invocation state. Pending retries expose `nextAttemptAt`, retry count, and status.
 
-## Gaps Found
+## Gap Closure Status
 
 ### G1: Database Migrations Are Not Yet Formalized
 
-The Prisma schema is updated, but the repo still needs a disciplined migration workflow with generated migration files and migration validation in CI.
+Status: Closed
+
+The repo now includes an initial Prisma migration, migration lock file, CI schema validation, and CI migration drift validation with a shadow database.
 
 Priority: High
 
 ### G2: Real MCP Adapter Registry Is Still Missing
 
-The worker has an executor interface and no-op executor, but no provider adapters or capability-to-adapter registry.
+Status: Closed for platform foundation
+
+`@faios/mcp` now owns a provider-aware adapter registry, mock adapters for current capabilities, and a worker executor that resolves adapters through the registry.
 
 Priority: High
 
 ### G3: Retry Safety Must Be Adapter-Owned
 
-The worker can schedule retries, but provider adapters must declare whether an operation is retry-safe. Destructive side effects must not be retried unless the adapter provides idempotency guarantees.
+Status: Closed for platform foundation
+
+MCP adapter results now carry retry safety. The worker converts adapter retry safety into retry decisions and does not infer retryability by itself.
 
 Priority: High
 
 ### G4: Outbox Replay Is Not Implemented
 
-If RabbitMQ publishing fails, pending invocations remain in the database and the polling worker can process them. There is not yet a replay publisher that republishes old pending invocations for RabbitMQ-only deployments.
+Status: Partially closed
+
+Pending invocations remain recoverable through the worker polling loop even if RabbitMQ publishing fails. A dedicated RabbitMQ replay publisher is still optional future work for RabbitMQ-only deployments.
 
 Priority: Medium
 
 ### G5: Runtime Integration Tests Are Missing
 
-Current checks validate compile, lint, build, and schema validity. They do not yet spin up Postgres and RabbitMQ to test approval-to-worker flow end to end.
+Status: Closed
+
+CI now includes an execution integration job with Postgres and RabbitMQ. The local runtime test validates migration deploy, dispatch message delivery, worker claim, mock adapter execution, and command completion.
 
 Priority: Medium
 
@@ -80,14 +90,16 @@ Priority: Medium
 
 ### G7: Secrets And Payload Redaction Need A Shared Policy
 
-Payloads are stored as JSON for auditability. Before real integrations, request and response payloads need a shared redaction layer.
+Status: Closed for platform foundation
+
+`@faios/mcp` now provides shared recursive payload redaction. Business API redacts invocation request payloads before persistence, and the worker redacts request and response payloads at the adapter boundary.
 
 Priority: High
 
 ## Recommended Next Work
 
-1. Add Prisma migration discipline and CI migration validation.
-2. Add MCP adapter registry with a typed mock provider.
-3. Add runtime integration tests for approval, dispatch, worker claim, retry, and failure paths.
-4. Add outbox replay publisher for pending invocations.
-5. Add redaction utilities before storing real provider payloads.
+1. Add the first real provider adapter behind the MCP registry.
+2. Add encrypted integration credential storage before provider OAuth/token work.
+3. Add provider health checks and readiness reporting from the adapter registry.
+4. Add a replay publisher only if RabbitMQ-only execution mode becomes a requirement.
+5. Add metrics and traces for queue latency, execution duration, retries, and failures.

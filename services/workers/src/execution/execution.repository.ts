@@ -1,5 +1,6 @@
 import type { ExecutionJob } from "@faios/contracts";
 import type { Prisma, PrismaClient } from "@faios/database";
+import { redactSensitivePayload } from "@faios/mcp";
 
 type ExecutionTransaction = Prisma.TransactionClient;
 
@@ -69,7 +70,7 @@ export class ExecutionRepository {
         founderId: invocation.command.founderId,
         capabilityKey: invocation.capabilityKey,
         provider: invocation.provider,
-        requestPayload: invocation.requestPayload ?? undefined,
+        requestPayload: redactSensitivePayload(invocation.requestPayload ?? undefined),
       };
     });
   }
@@ -87,7 +88,9 @@ export class ExecutionRepository {
           status: "SUCCEEDED",
           ...(responsePayload === undefined
             ? {}
-            : { responsePayload: responsePayload as Prisma.InputJsonValue }),
+            : {
+                responsePayload: redactSensitivePayload(responsePayload) as Prisma.InputJsonValue,
+              }),
           completedAt: new Date(),
         },
       });

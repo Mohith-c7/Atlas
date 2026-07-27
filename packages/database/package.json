@@ -10,6 +10,8 @@
     "build": "tsc --noEmit",
     "clean": "rimraf dist .turbo",
     "lint": "eslint .",
+    "prisma:migrate:diff": "prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url postgresql://faios:faios@localhost:5432/faios_shadow?schema=public --exit-code",
+    "prisma:migrate:status": "prisma migrate status",
     "prisma:generate": "prisma generate",
     "test": "echo \"No tests yet\"",
     "typecheck": "tsc --noEmit"

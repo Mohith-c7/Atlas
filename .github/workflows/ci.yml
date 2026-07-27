@@ -9,6 +9,20 @@ on:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: faios
+          POSTGRES_PASSWORD: faios
+          POSTGRES_DB: faios_shadow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U faios -d faios_shadow"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -31,5 +45,61 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Prisma schema
+        run: pnpm --filter @faios/database exec prisma validate --schema prisma/schema.prisma
+
+      - name: Prisma migration drift
+        run: pnpm --filter @faios/database prisma:migrate:diff
+
       - name: Build
         run: pnpm build
+
+  execution-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: faios
+          POSTGRES_PASSWORD: faios
+          POSTGRES_DB: faios_shadow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U faios -d faios"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      rabbitmq:
+        image: rabbitmq:4-management-alpine
+        env:
+          RABBITMQ_DEFAULT_USER: faios
+          RABBITMQ_DEFAULT_PASS: faios
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://faios:faios@localhost:5432/faios_shadow?schema=public
+      RABBITMQ_URL: amqp://faios:faios@localhost:5672
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations
+        run: pnpm --filter @faios/database exec prisma migrate deploy --schema prisma/schema.prisma
+
+      - name: Run execution integration test
+        run: pnpm test:integration:execution

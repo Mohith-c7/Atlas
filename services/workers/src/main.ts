@@ -3,8 +3,8 @@ import { getPrismaClient } from "@faios/database";
 import { ExecutionRepository } from "./execution/execution.repository.js";
 import { ExecutionWorker } from "./execution/execution-worker.js";
 import { ExecutionPollingLoop } from "./execution/execution-polling-loop.js";
-import { NoopMcpToolExecutor } from "./execution/noop-mcp-tool-executor.js";
 import { RabbitMqExecutionConsumer } from "./execution/rabbitmq-execution-consumer.js";
+import { RegistryMcpToolExecutor } from "./execution/registry-mcp-tool-executor.js";
 
 const logger = createLogger("workers");
 
@@ -14,7 +14,7 @@ const pollIntervalMs = Number(process.env.WORKER_EXECUTION_POLL_INTERVAL_MS ?? 5
 
 const worker = new ExecutionWorker(
   new ExecutionRepository(getPrismaClient()),
-  new NoopMcpToolExecutor(),
+  new RegistryMcpToolExecutor(),
   logger,
 );
 

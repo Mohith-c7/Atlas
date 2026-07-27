@@ -5,6 +5,7 @@ import {
   type ApprovalStatus,
 } from "@faios/contracts";
 import type { Prisma, PrismaClient } from "@faios/database";
+import { redactSensitivePayload } from "@faios/mcp";
 
 type ApprovalDecision = "APPROVED" | "REJECTED";
 
@@ -181,14 +182,14 @@ export class ApprovalRepository {
             provider: step.provider ?? null,
             status: "PENDING",
             maxRetries: 3,
-            requestPayload: {
+            requestPayload: redactSensitivePayload({
               capability: step.capability,
               provider: step.provider,
               reason: step.reason,
               requiresApproval: step.requiresApproval,
               commandSummary: command.summary,
               planId: command.plan?.id,
-            },
+            }) as Prisma.InputJsonValue,
           },
         }),
       ),
@@ -209,7 +210,7 @@ export class ApprovalRepository {
       founderId,
       capabilityKey: invocation.capabilityKey,
       provider: invocation.provider,
-      requestPayload: invocation.requestPayload ?? undefined,
+      requestPayload: redactSensitivePayload(invocation.requestPayload ?? undefined),
     }));
   }
 }

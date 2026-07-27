@@ -325,6 +325,9 @@ importers:
       '@faios/logger':
         specifier: workspace:*
         version: link:../../packages/logger
+      '@faios/mcp':
+        specifier: workspace:*
+        version: link:../../packages/mcp
       '@fastify/cors':
         specifier: ^11.3.0
         version: 11.3.0
@@ -377,6 +380,9 @@ importers:
       '@faios/logger':
         specifier: workspace:*
         version: link:../../packages/logger
+      '@faios/mcp':
+        specifier: workspace:*
+        version: link:../../packages/mcp
       amqplib:
         specifier: ^2.0.1
         version: 2.0.1
