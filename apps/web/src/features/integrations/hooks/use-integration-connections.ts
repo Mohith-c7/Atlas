@@ -1,8 +1,15 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { connectGitHubIntegration, listIntegrationConnections } from "../api/integrations-api";
-import type { ConnectGitHubIntegrationRequest } from "../types/integration";
+import {
+  connectGitHubIntegration,
+  listIntegrationConnections,
+  startGitHubOAuth,
+} from "../api/integrations-api";
+import type {
+  ConnectGitHubIntegrationRequest,
+  StartGitHubOAuthRequest,
+} from "../types/integration";
 
 export function useIntegrationConnections() {
   return useQuery({
@@ -21,5 +28,11 @@ export function useConnectGitHubIntegration() {
       await queryClient.invalidateQueries({ queryKey: ["integrations", "connections"] });
       await queryClient.invalidateQueries({ queryKey: ["mcp", "capabilities"] });
     },
+  });
+}
+
+export function useStartGitHubOAuth() {
+  return useMutation({
+    mutationFn: (request: StartGitHubOAuthRequest) => startGitHubOAuth(request),
   });
 }

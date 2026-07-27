@@ -6,3 +6,15 @@ metadata:
 data:
   APP_ENV: production
   APP_NAME: Founder AI Operating System
+  AI_ORCHESTRATOR_URL: http://faios-ai-orchestrator:8000
+  BUSINESS_API_URL: http://faios-business-api:4000
+  NEXT_PUBLIC_BUSINESS_API_URL: https://api.example.com
+  PUBLIC_WEB_URL: https://app.example.com
+  EXECUTION_DISPATCH_ENABLED: "true"
+  WORKER_RABBITMQ_CONSUMER_ENABLED: "true"
+  WORKER_EXECUTION_LOOP_ENABLED: "false"
+  WORKER_EXECUTION_POLL_INTERVAL_MS: "5000"
+  WORKER_REAL_PROVIDER_ADAPTERS_ENABLED: "true"
+  QDRANT_URL: http://qdrant:6333
+  QDRANT_MEMORY_COLLECTION: faios_memory
+  LOG_LEVEL: info

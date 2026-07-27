@@ -3,6 +3,8 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - configmap.yaml
+  - secret.example.yaml
+  - services.yaml
   - web.deployment.yaml
   - business-api.deployment.yaml
   - ai-orchestrator.deployment.yaml

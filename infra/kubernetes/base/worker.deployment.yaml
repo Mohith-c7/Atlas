@@ -19,3 +19,5 @@ spec:
           envFrom:
             - configMapRef:
                 name: faios-config
+            - secretRef:
+                name: faios-secrets

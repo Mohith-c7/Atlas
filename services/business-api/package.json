@@ -8,6 +8,7 @@
     "clean": "rimraf dist .turbo",
     "dev": "tsx watch src/main.ts",
     "lint": "eslint .",
+    "start": "node --import tsx src/main.ts",
     "test": "echo \"No tests yet\"",
     "test:integration": "tsx src/integration/github-connection.integration.ts && tsx src/integration/github-execution-payload.integration.ts && tsx src/integration/founder-session-boundary.integration.ts && tsx src/integration/github-oauth.integration.ts && tsx src/integration/memory-context.integration.ts && tsx src/integration/execution-events.integration.ts && tsx src/integration/health.integration.ts",
     "typecheck": "tsc --noEmit"

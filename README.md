@@ -1,6 +1,6 @@
 # Founder AI Operating System
 
-Founder AI Operating System (FAIOS) is an AI-native, voice-first solo-founder SaaS for operating startup tools through natural language. This repository is a production architecture scaffold only: it establishes boundaries, tooling, conventions, and deployment foundations without implementing business features, authentication, or APIs.
+Founder AI Operating System (FAIOS) is an AI-native, voice-first solo-founder SaaS for operating startup tools through natural language. The repository now contains the production foundation plus the first vertical runtime: command planning, founder-scoped memory, GitHub connection/execution, approval gating, worker execution, realtime updates, health checks, and voice-command capture.
 
 ## Monorepo Layout
 
@@ -62,6 +62,8 @@ Dependencies should point inward to stable abstractions. Feature code may depend
 
 ```bash
 pnpm install
+docker compose -f infra/docker/docker-compose.yml up -d
+pnpm --filter @faios/database exec prisma migrate deploy --schema prisma/schema.prisma
 pnpm dev
 ```
 
@@ -79,9 +81,12 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm --filter @faios/business-api test:integration
+pnpm test:integration:execution
+pnpm smoke:github:e2e
+python -m ruff check services/ai-orchestrator/src services/ai-orchestrator/tests
+python -m pytest services/ai-orchestrator/tests
 ```
-
-## Current Scope
 
 ## Product Model
 
@@ -100,14 +105,20 @@ Founder voice/text intent
   -> execution history
 ```
 
-## Current Scope
+## Implemented Foundation
 
-This scaffold intentionally does not include:
+- Next.js founder console with chat and browser voice-command capture
+- Fastify business API with founder session boundary, command planning, approvals, integrations, SSE execution events, and health probes
+- FastAPI AI orchestrator with LangGraph planning boundary, deterministic fallback planner, speech boundary, and health probes
+- Worker runtime with RabbitMQ dispatch, retry handling, MCP adapter registry, encrypted credential resolution, and GitHub issue execution
+- PostgreSQL/Prisma schema and migrations for founder profile, conversations, commands, approvals, integrations, credentials, invocations, and memory
+- Shared contracts, security, events, logging, MCP, TypeScript, ESLint, Prettier, Docker, and Kubernetes foundations
 
-- Authentication implementation
-- Business API routes
-- AI workflow implementation
-- Business feature implementation
-- Third-party integration implementation
+## Still Deferred
 
-Those belong in later feature increments after contracts, threat model, tenancy model, and service ownership are approved.
+- Production authentication and billing
+- Real LLM provider configuration and prompt/model evaluation harness
+- Provider OAuth UX completion pages and token refresh
+- Full streaming transcription provider implementation
+- More external tool adapters beyond GitHub issue creation
+- Production-grade observability backend, dashboards, and alert policies

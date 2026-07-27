@@ -24,6 +24,21 @@ export type ConnectGitHubIntegrationRequest = {
   apiBaseUrl?: string;
 };
 
+export type StartGitHubOAuthRequest = {
+  accountLabel?: string;
+  owner: string;
+  repo: string;
+  redirectUri: string;
+  apiBaseUrl?: string;
+};
+
+export type StartGitHubOAuthResponse = {
+  authorizationUrl: string;
+  state: string;
+  expiresAt: string;
+  correlationId: string;
+};
+
 export type ConnectIntegrationResponse = {
   connection: IntegrationConnection;
   correlationId: string;

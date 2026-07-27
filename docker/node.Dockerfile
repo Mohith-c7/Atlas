@@ -7,7 +7,7 @@ RUN corepack enable
 WORKDIR /app
 
 FROM base AS deps
-COPY package.json pnpm-workspace.yaml turbo.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY apps ./apps
 COPY services ./services
 COPY packages ./packages
@@ -21,5 +21,6 @@ RUN pnpm turbo run build --filter=${SERVICE}
 FROM base AS runner
 ARG SERVICE
 ENV NODE_ENV=production
+ENV SERVICE=${SERVICE}
 COPY --from=builder /app /app
-CMD ["pnpm", "dev"]
+CMD pnpm --filter "${SERVICE}" start

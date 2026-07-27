@@ -6,12 +6,15 @@ import {
   type IntegrationConnection,
   type IntegrationConnectionStatus,
   type ListIntegrationConnectionsResponse,
+  type StartGitHubOAuthRequest,
+  type StartGitHubOAuthResponse,
 } from "../types/integration";
 
 const BUSINESS_API_URL =
   process.env.NEXT_PUBLIC_BUSINESS_API_URL?.replace(/\/$/, "") ?? "http://localhost:4000";
 const INTEGRATION_CONNECTIONS_ENDPOINT = `${BUSINESS_API_URL}/api/v1/integrations/connections`;
 const GITHUB_CONNECTIONS_ENDPOINT = `${BUSINESS_API_URL}/api/v1/integrations/github/connections`;
+const GITHUB_OAUTH_START_ENDPOINT = `${BUSINESS_API_URL}/api/v1/integrations/github/oauth/start`;
 const connectionStatuses = new Set<IntegrationConnectionStatus>([
   "connected",
   "disconnected",
@@ -164,5 +167,45 @@ export async function connectGitHubIntegration(
     connection,
     correlationId:
       isRecord(payload) && typeof payload.correlationId === "string" ? payload.correlationId : "",
+  };
+}
+
+export async function startGitHubOAuth(
+  request: StartGitHubOAuthRequest,
+): Promise<StartGitHubOAuthResponse> {
+  const response = await fetch(GITHUB_OAUTH_START_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Correlation-Id": createCorrelationId(),
+    },
+    body: JSON.stringify(request),
+  });
+
+  const payload = await readJson(response);
+
+  if (!response.ok) {
+    throwIntegrationError(payload, response.status, "Unable to start GitHub OAuth.");
+  }
+
+  if (
+    !isRecord(payload) ||
+    typeof payload.authorizationUrl !== "string" ||
+    typeof payload.state !== "string" ||
+    typeof payload.expiresAt !== "string" ||
+    typeof payload.correlationId !== "string"
+  ) {
+    throw new IntegrationApiError({
+      code: "GITHUB_OAUTH_RESPONSE_INVALID",
+      message: "GitHub OAuth response was invalid.",
+      statusCode: response.status,
+    });
+  }
+
+  return {
+    authorizationUrl: payload.authorizationUrl,
+    state: payload.state,
+    expiresAt: payload.expiresAt,
+    correlationId: payload.correlationId,
   };
 }

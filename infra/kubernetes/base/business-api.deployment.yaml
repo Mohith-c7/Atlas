@@ -21,3 +21,17 @@ spec:
           envFrom:
             - configMapRef:
                 name: faios-config
+            - secretRef:
+                name: faios-secrets
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 4000
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 4000
+            initialDelaySeconds: 10
+            periodSeconds: 10

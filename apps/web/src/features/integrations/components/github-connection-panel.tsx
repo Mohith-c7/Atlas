@@ -7,6 +7,7 @@ import { IntegrationApiError } from "../types/integration";
 import {
   useConnectGitHubIntegration,
   useIntegrationConnections,
+  useStartGitHubOAuth,
 } from "../hooks/use-integration-connections";
 
 function formatError(error: Error) {
@@ -22,6 +23,7 @@ function formatError(error: Error) {
 export function GitHubConnectionPanel() {
   const connections = useIntegrationConnections();
   const connectGitHub = useConnectGitHubIntegration();
+  const startGitHubOAuth = useStartGitHubOAuth();
   const githubConnection = connections.data?.connections.find(
     (connection) => connection.provider === "github",
   );
@@ -30,16 +32,23 @@ export function GitHubConnectionPanel() {
   const [repo, setRepo] = useState(githubConnection?.metadata?.repo ?? "");
   const [accountLabel, setAccountLabel] = useState(githubConnection?.accountLabel ?? "");
   const [accessToken, setAccessToken] = useState("");
+  const [showManualToken, setShowManualToken] = useState(false);
 
   const canSubmit =
     owner.trim().length > 0 &&
     repo.trim().length > 0 &&
-    accessToken.trim().length > 0 &&
+    (showManualToken ? accessToken.trim().length > 0 : true) &&
     !connectGitHub.isPending;
+  const canStartOAuth =
+    owner.trim().length > 0 && repo.trim().length > 0 && !startGitHubOAuth.isPending;
 
   const errorMessage = useMemo(() => {
     if (connectGitHub.error) {
       return formatError(connectGitHub.error);
+    }
+
+    if (startGitHubOAuth.error) {
+      return formatError(startGitHubOAuth.error);
     }
 
     if (connections.error) {
@@ -47,12 +56,36 @@ export function GitHubConnectionPanel() {
     }
 
     return undefined;
-  }, [connectGitHub.error, connections.error]);
+  }, [connectGitHub.error, connections.error, startGitHubOAuth.error]);
+
+  function handleOAuthStart() {
+    if (!canStartOAuth) {
+      return;
+    }
+
+    const redirectUri =
+      process.env.NEXT_PUBLIC_GITHUB_OAUTH_CALLBACK_URL ??
+      `${process.env.NEXT_PUBLIC_BUSINESS_API_URL?.replace(/\/$/, "") ?? "http://localhost:4000"}/api/v1/integrations/github/oauth/callback`;
+
+    startGitHubOAuth.mutate(
+      {
+        accountLabel: accountLabel.trim() || undefined,
+        owner: owner.trim(),
+        repo: repo.trim(),
+        redirectUri,
+      },
+      {
+        onSuccess: (response) => {
+          window.location.assign(response.authorizationUrl);
+        },
+      },
+    );
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!canSubmit) {
+    if (!canSubmit || !showManualToken) {
       return;
     }
 
@@ -126,25 +159,46 @@ export function GitHubConnectionPanel() {
           />
         </label>
 
-        <label className="grid gap-1.5 text-sm font-medium text-foreground">
-          Access token
-          <input
-            autoComplete="off"
-            className="min-h-10 rounded-md border border-border bg-background px-3 text-sm outline-none transition focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10"
-            onChange={(event) => setAccessToken(event.target.value)}
-            placeholder="ghp_..."
-            type="password"
-            value={accessToken}
-          />
-        </label>
-
         <button
           className="inline-flex min-h-10 items-center justify-center rounded-md bg-foreground px-4 text-sm font-semibold text-white transition hover:bg-foreground/90 disabled:cursor-not-allowed disabled:bg-muted"
-          disabled={!canSubmit}
-          type="submit"
+          disabled={!canStartOAuth}
+          onClick={handleOAuthStart}
+          type="button"
         >
-          {connectGitHub.isPending ? "Connecting..." : "Connect GitHub"}
+          {startGitHubOAuth.isPending ? "Opening GitHub..." : "Connect with GitHub"}
         </button>
+
+        <button
+          className="text-left text-xs font-medium text-muted underline-offset-4 hover:text-foreground hover:underline"
+          onClick={() => setShowManualToken((value) => !value)}
+          type="button"
+        >
+          {showManualToken ? "Hide development token fallback" : "Use development token fallback"}
+        </button>
+
+        {showManualToken ? (
+          <>
+            <label className="grid gap-1.5 text-sm font-medium text-foreground">
+              Access token
+              <input
+                autoComplete="off"
+                className="min-h-10 rounded-md border border-border bg-background px-3 text-sm outline-none transition focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10"
+                onChange={(event) => setAccessToken(event.target.value)}
+                placeholder="ghp_..."
+                type="password"
+                value={accessToken}
+              />
+            </label>
+
+            <button
+              className="inline-flex min-h-10 items-center justify-center rounded-md border border-border bg-background px-4 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={!canSubmit}
+              type="submit"
+            >
+              {connectGitHub.isPending ? "Connecting..." : "Connect with token"}
+            </button>
+          </>
+        ) : null}
       </form>
 
       {errorMessage ? (
