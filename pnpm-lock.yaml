@@ -247,6 +247,31 @@ importers:
         specifier: ^5.7.2
         version: 5.9.3
 
+  packages/security:
+    dependencies:
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      '@faios/eslint-config':
+        specifier: workspace:*
+        version: link:../../tooling/eslint-config
+      '@faios/typescript-config':
+        specifier: workspace:*
+        version: link:../../tooling/typescript-config
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.20.1
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.5(jiti@2.7.0)
+      rimraf:
+        specifier: ^6.0.1
+        version: 6.1.3
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+
   packages/types:
     devDependencies:
       '@faios/eslint-config':
@@ -328,6 +353,9 @@ importers:
       '@faios/mcp':
         specifier: workspace:*
         version: link:../../packages/mcp
+      '@faios/security':
+        specifier: workspace:*
+        version: link:../../packages/security
       '@fastify/cors':
         specifier: ^11.3.0
         version: 11.3.0

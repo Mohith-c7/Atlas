@@ -105,9 +105,22 @@ model IntegrationConnection {
   metadata       Json?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
+  credential     IntegrationCredential?
   invocations    ToolInvocation[]
 
   @@index([founderId, provider])
+}
+
+model IntegrationCredential {
+  id              String                @id @default(cuid())
+  integrationId   String                @unique
+  integration     IntegrationConnection @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  encryptedPayload Json
+  keyVersion      String
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@index([keyVersion])
 }
 
 model Conversation {
