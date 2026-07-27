@@ -40,7 +40,7 @@ importers:
         version: link:../../packages/ui
       '@tanstack/react-query':
         specifier: ^5.62.8
-        version: 5.101.2(react@19.2.7)
+        version: 5.62.8(react@19.2.7)
       next:
         specifier: ^15.1.0
         version: 15.5.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -356,6 +356,12 @@ importers:
 
   services/workers:
     dependencies:
+      '@faios/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@faios/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       '@faios/env':
         specifier: workspace:*
         version: link:../../packages/env
@@ -951,11 +957,11 @@ packages:
   '@swc/helpers@0.5.15':
     resolution: {integrity: sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==}
 
-  '@tanstack/query-core@5.101.2':
-    resolution: {integrity: sha512-hH5MLoJhF7KaIGd7q3xTXGXvslI+GYlM1Z/35aSHHWaCJWB7XvTSHYuV3eM7tw+aE0mT/xMro4M4Q9rCGHT0lw==}
+  '@tanstack/query-core@5.62.8':
+    resolution: {integrity: sha512-4fV31vDsUyvNGrKIOUNPrZztoyL187bThnoQOvAXEVlZbSiuPONpfx53634MKKdvsDir5NyOGm80ShFaoHS/mw==}
 
-  '@tanstack/react-query@5.101.2':
-    resolution: {integrity: sha512-seDkr6kzGzX1okaaTtZPtgA688CDPlXUz1C6xSg0ESqn04Vuc8tlrYms1s3de+znBqhPVxFRfpAfUf+6XvfPWg==}
+  '@tanstack/react-query@5.62.8':
+    resolution: {integrity: sha512-8TUstKxF/fysHonZsWg/hnlDVgasTdHx6Q+f1/s/oPKJBJbKUWPZEHwLTMOZgrZuroLMiqYKJ9w69Abm8mWP0Q==}
     peerDependencies:
       react: ^18 || ^19
 
@@ -2471,11 +2477,11 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@tanstack/query-core@5.101.2': {}
+  '@tanstack/query-core@5.62.8': {}
 
-  '@tanstack/react-query@5.101.2(react@19.2.7)':
+  '@tanstack/react-query@5.62.8(react@19.2.7)':
     dependencies:
-      '@tanstack/query-core': 5.101.2
+      '@tanstack/query-core': 5.62.8
       react: 19.2.7
 
   '@turbo/darwin-64@2.10.5':

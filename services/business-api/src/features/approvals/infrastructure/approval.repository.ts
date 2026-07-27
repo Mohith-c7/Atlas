@@ -1,5 +1,9 @@
-import type { ApprovalRequest as ApprovalContract, ApprovalStatus } from "@faios/contracts";
-import type { PrismaClient } from "@faios/database";
+import {
+  executionStepSchema,
+  type ApprovalRequest as ApprovalContract,
+  type ApprovalStatus,
+} from "@faios/contracts";
+import type { Prisma, PrismaClient } from "@faios/database";
 
 type ApprovalDecision = "APPROVED" | "REJECTED";
 
@@ -14,6 +18,7 @@ const isApprovalPayload = (value: unknown): value is NonNullable<ApprovalContrac
   typeof (value as { reason?: unknown }).reason === "string";
 
 type ApprovalRecord = Awaited<ReturnType<PrismaClient["approvalRequest"]["findMany"]>>[number];
+type ApprovalTransaction = Prisma.TransactionClient;
 
 const toApprovalContract = (approval: ApprovalRecord): ApprovalContract => ({
   id: approval.id,
@@ -49,37 +54,125 @@ export class ApprovalRepository {
     approvalId: string,
     decision: ApprovalDecision,
   ): Promise<ApprovalContract | undefined> {
-    const existing = await this.database.approvalRequest.findFirst({
-      where: {
-        id: approvalId,
-        command: {
-          founderId,
+    return this.database.$transaction(async (transaction) => {
+      const existing = await transaction.approvalRequest.findFirst({
+        where: {
+          id: approvalId,
+          command: {
+            founderId,
+          },
         },
+      });
+
+      if (!existing) {
+        return undefined;
+      }
+
+      if (existing.status === decision) {
+        return toApprovalContract(existing);
+      }
+
+      if (existing.status !== "PENDING") {
+        return toApprovalContract(existing);
+      }
+
+      const updated = await transaction.approvalRequest.update({
+        where: {
+          id: approvalId,
+        },
+        data: {
+          status: decision,
+          resolvedAt: new Date(),
+        },
+      });
+
+      if (decision === "REJECTED") {
+        await transaction.command.update({
+          where: {
+            id: existing.commandId,
+          },
+          data: {
+            status: "CANCELLED",
+          },
+        });
+      } else {
+        await this.enqueueCommandInvocationsIfReady(transaction, founderId, existing.commandId);
+      }
+
+      return toApprovalContract(updated);
+    });
+  }
+
+  private async enqueueCommandInvocationsIfReady(
+    transaction: ApprovalTransaction,
+    founderId: string,
+    commandId: string,
+  ): Promise<void> {
+    const command = await transaction.command.findFirst({
+      where: {
+        id: commandId,
+        founderId,
+      },
+      include: {
+        approvals: true,
+        invocations: true,
+        plan: true,
       },
     });
 
-    if (!existing) {
-      return undefined;
+    if (!command?.plan || command.invocations.length > 0) {
+      return;
     }
 
-    if (existing.status === decision) {
-      return toApprovalContract(existing);
+    const hasOpenApproval = command.approvals.some((approval) => approval.status === "PENDING");
+    const hasRejectedApproval = command.approvals.some(
+      (approval) => approval.status === "REJECTED",
+    );
+
+    if (hasOpenApproval || hasRejectedApproval) {
+      return;
     }
 
-    if (existing.status !== "PENDING") {
-      return toApprovalContract(existing);
+    const parsedSteps = executionStepSchema.array().safeParse(command.plan.steps);
+
+    if (!parsedSteps.success || parsedSteps.data.length === 0) {
+      await transaction.command.update({
+        where: {
+          id: commandId,
+        },
+        data: {
+          status: "FAILED",
+          errorCode: "INVALID_EXECUTION_PLAN",
+          errorMessage: "Execution plan did not contain executable steps.",
+        },
+      });
+      return;
     }
 
-    const updated = await this.database.approvalRequest.update({
+    await transaction.toolInvocation.createMany({
+      data: parsedSteps.data.map((step) => ({
+        commandId,
+        capabilityKey: step.capability,
+        provider: step.provider ?? null,
+        status: "PENDING",
+        requestPayload: {
+          capability: step.capability,
+          provider: step.provider,
+          reason: step.reason,
+          requiresApproval: step.requiresApproval,
+          commandSummary: command.summary,
+          planId: command.plan?.id,
+        },
+      })),
+    });
+
+    await transaction.command.update({
       where: {
-        id: approvalId,
+        id: commandId,
       },
       data: {
-        status: decision,
-        resolvedAt: new Date(),
+        status: "EXECUTING",
       },
     });
-
-    return toApprovalContract(updated);
   }
 }

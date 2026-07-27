@@ -12,6 +12,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@faios/contracts": "workspace:*",
+    "@faios/database": "workspace:*",
     "@faios/env": "workspace:*",
     "@faios/events": "workspace:*",
     "@faios/logger": "workspace:*"

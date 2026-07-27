@@ -16,6 +16,14 @@ export const mcpCapabilityStatusSchema = z.enum(["available", "not_connected", "
 
 export const approvalStatusSchema = z.enum(["pending", "approved", "rejected", "expired"]);
 
+export const toolInvocationStatusSchema = z.enum([
+  "pending",
+  "running",
+  "succeeded",
+  "failed",
+  "cancelled",
+]);
+
 export const mcpCapabilitySchema = z.object({
   key: z.string().min(1),
   provider: z.string().min(1),
@@ -97,6 +105,30 @@ export const approvalDecisionResponseSchema = z.object({
   approval: approvalRequestSchema,
 });
 
+export const toolInvocationSchema = z.object({
+  id: z.string(),
+  commandId: z.string(),
+  capabilityKey: z.string(),
+  provider: z.string().nullable().optional(),
+  status: toolInvocationStatusSchema,
+  requestPayload: z.unknown().optional(),
+  responsePayload: z.unknown().optional(),
+  errorCode: z.string().nullable().optional(),
+  errorMessage: z.string().nullable().optional(),
+  startedAt: z.string().nullable().optional(),
+  completedAt: z.string().nullable().optional(),
+  createdAt: z.string(),
+});
+
+export const executionJobSchema = z.object({
+  invocationId: z.string(),
+  commandId: z.string(),
+  founderId: z.string(),
+  capabilityKey: z.string(),
+  provider: z.string().nullable().optional(),
+  requestPayload: z.unknown().optional(),
+});
+
 export const apiErrorSchema = z.object({
   code: z.string(),
   message: z.string(),
@@ -119,6 +151,7 @@ export type CreateCommandRequest = z.infer<typeof createCommandRequestSchema>;
 export type CreateCommandResponse = z.infer<typeof createCommandResponseSchema>;
 export type ExecutionPlan = z.infer<typeof executionPlanSchema>;
 export type ExecutionStep = z.infer<typeof executionStepSchema>;
+export type ExecutionJob = z.infer<typeof executionJobSchema>;
 export type ListCapabilitiesResponse = z.infer<typeof listCapabilitiesResponseSchema>;
 export type ListApprovalsResponse = z.infer<typeof listApprovalsResponseSchema>;
 export type McpCapability = z.infer<typeof mcpCapabilitySchema>;
@@ -126,6 +159,8 @@ export type McpCapabilityStatus = z.infer<typeof mcpCapabilityStatusSchema>;
 export type Pagination = z.infer<typeof paginationSchema>;
 export type PlanCommandRequest = z.infer<typeof planCommandRequestSchema>;
 export type PlanCommandResponse = z.infer<typeof planCommandResponseSchema>;
+export type ToolInvocation = z.infer<typeof toolInvocationSchema>;
+export type ToolInvocationStatus = z.infer<typeof toolInvocationStatusSchema>;
 
 export const aiCommandRequestSchema = planCommandRequestSchema;
 export type AiCommandRequest = PlanCommandRequest;
