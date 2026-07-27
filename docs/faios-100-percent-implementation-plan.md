@@ -716,6 +716,30 @@ M11.1 adds model-routing and structured-output safety while preserving determini
 - `pnpm test`
 - `pnpm build`
 
+## Tenth Next Implementation Slice
+
+M11.2 adds planner regression evals for capability selection and approval behavior.
+
+### M11.2 Checklist
+
+- [x] Add planner evaluation dataset.
+- [x] Add regression eval runner.
+- [x] Add default capability fixture for evals.
+- [x] Validate expected capability selection.
+- [x] Validate expected approval status.
+- [x] Add tests proving the eval dataset loads.
+- [x] Add tests proving the deterministic planner passes the baseline evals.
+
+### M11.2 Completion Gate
+
+- `python -m ruff check .`
+- `python -m pytest`
+- `pnpm format:check`
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm test`
+- `pnpm build`
+
 ## Out Of Scope For V1
 
 - Team workspaces.

@@ -1,0 +1,30 @@
+[
+  {
+    "id": "github_issue_creation",
+    "input": "Create a GitHub issue for the onboarding bug",
+    "expectedCapabilities": ["repository.createIssue"],
+    "expectedStatus": "awaiting_approval",
+    "expectedApproval": true
+  },
+  {
+    "id": "knowledge_summary",
+    "input": "Summarize the latest customer feedback notes",
+    "expectedCapabilities": ["knowledge.search"],
+    "expectedStatus": "completed",
+    "expectedApproval": false
+  },
+  {
+    "id": "calendar_schedule",
+    "input": "Schedule a meeting with the design advisor tomorrow",
+    "expectedCapabilities": ["calendar.schedule"],
+    "expectedStatus": "completed",
+    "expectedApproval": false
+  },
+  {
+    "id": "email_send_requires_approval",
+    "input": "Send an email update to the beta users",
+    "expectedCapabilities": ["communication.send"],
+    "expectedStatus": "awaiting_approval",
+    "expectedApproval": true
+  }
+]
