@@ -5,6 +5,7 @@ import { AppError } from "../../../lib/errors.js";
 import type { FounderSession } from "../../../lib/founder-session.js";
 import { resolveFounderAccount } from "../../commands/infrastructure/founder-resolver.js";
 import { MemoryRepository } from "../infrastructure/memory.repository.js";
+import { MemoryVectorSyncService } from "../infrastructure/memory-vector-sync.service.js";
 
 function redactMergedContent(value: string): string {
   return redactSensitiveText(value).trim();
@@ -12,9 +13,11 @@ function redactMergedContent(value: string): string {
 
 export class MergeMemoryItemsUseCase {
   private readonly repository: MemoryRepository;
+  private readonly vectorSync: MemoryVectorSyncService;
 
   public constructor(private readonly database: PrismaClient) {
     this.repository = new MemoryRepository(database);
+    this.vectorSync = new MemoryVectorSyncService(database);
   }
 
   public async execute(input: {
@@ -36,6 +39,8 @@ export class MergeMemoryItemsUseCase {
         content,
       },
     });
+    await this.vectorSync.scheduleDelete(founder.id, result.mergedMemoryIds);
+    await this.vectorSync.scheduleUpsert(founder.id, [result.memory]);
 
     return {
       ...result,

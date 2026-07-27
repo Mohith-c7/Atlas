@@ -8,6 +8,7 @@ import { AppError } from "../../../lib/errors.js";
 import type { FounderSession } from "../../../lib/founder-session.js";
 import { resolveFounderAccount } from "../../commands/infrastructure/founder-resolver.js";
 import { MemoryRepository } from "../infrastructure/memory.repository.js";
+import { MemoryVectorSyncService } from "../infrastructure/memory-vector-sync.service.js";
 import { redactMemoryContent } from "./redact-memory-content.js";
 
 type NormalizedImportedMemory = {
@@ -33,7 +34,11 @@ function normalizeImportedMemory(memory: ImportMemoryItem): NormalizedImportedMe
 }
 
 export class ImportMemoryItemsUseCase {
-  public constructor(private readonly database: PrismaClient) {}
+  private readonly vectorSync: MemoryVectorSyncService;
+
+  public constructor(private readonly database: PrismaClient) {
+    this.vectorSync = new MemoryVectorSyncService(database);
+  }
 
   public async execute(input: {
     founderSession: FounderSession | undefined;
@@ -46,10 +51,10 @@ export class ImportMemoryItemsUseCase {
 
     const result = await this.database.$transaction(async (transaction) => {
       const repository = new MemoryRepository(transaction);
-      const replacedExistingCount =
+      const replacedExistingMemoryIds =
         input.request.mode === "replace"
           ? await repository.deleteFounderMemoryItems(founder.id)
-          : 0;
+          : [];
       const memories = await repository.createImportedMemoryItems({
         founderId: founder.id,
         memories: normalizedMemories,
@@ -57,14 +62,16 @@ export class ImportMemoryItemsUseCase {
 
       return {
         memories,
-        replacedExistingCount,
+        replacedExistingMemoryIds,
       };
     });
+    await this.vectorSync.scheduleDelete(founder.id, result.replacedExistingMemoryIds);
+    await this.vectorSync.scheduleUpsert(founder.id, result.memories);
 
     return {
       memories: result.memories,
       importedCount: result.memories.length,
-      replacedExistingCount: result.replacedExistingCount,
+      replacedExistingCount: result.replacedExistingMemoryIds.length,
       importedAt,
       correlationId: input.correlationId,
     };

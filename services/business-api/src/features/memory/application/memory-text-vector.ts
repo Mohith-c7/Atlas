@@ -1,4 +1,4 @@
-const VECTOR_DIMENSIONS = 64;
+const DEFAULT_VECTOR_DIMENSIONS = 64;
 
 function hashToken(token: string): number {
   let hash = 2166136261;
@@ -11,8 +11,11 @@ function hashToken(token: string): number {
   return hash >>> 0;
 }
 
-export function createDeterministicTextVector(value: string): number[] {
-  const vector = Array.from({ length: VECTOR_DIMENSIONS }, () => 0);
+export function createDeterministicTextVector(
+  value: string,
+  dimensions = DEFAULT_VECTOR_DIMENSIONS,
+): number[] {
+  const vector = Array.from({ length: dimensions }, () => 0);
   const tokens = value
     .toLowerCase()
     .split(/[^a-z0-9]+/u)
@@ -20,7 +23,7 @@ export function createDeterministicTextVector(value: string): number[] {
 
   for (const token of tokens) {
     const hash = hashToken(token);
-    const index = hash % VECTOR_DIMENSIONS;
+    const index = hash % dimensions;
     const direction = hash % 2 === 0 ? 1 : -1;
 
     vector[index] = (vector[index] ?? 0) + direction;

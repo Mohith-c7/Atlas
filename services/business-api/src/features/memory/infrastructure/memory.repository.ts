@@ -88,7 +88,7 @@ export class MemoryRepository {
     confidence: number;
     vectorRef?: string;
     metadata?: Prisma.InputJsonValue;
-  }): Promise<MemoryContextItem> {
+  }): Promise<MemoryItem> {
     const memory = await this.database.memoryItem.create({
       data: {
         founderId: input.founderId,
@@ -101,7 +101,7 @@ export class MemoryRepository {
       },
     });
 
-    return toMemoryContextItem(memory);
+    return toMemoryItem(memory);
   }
 
   public async listMemoryItems(founderId: string, limit: number): Promise<MemoryItem[]> {
@@ -123,6 +123,31 @@ export class MemoryRepository {
     });
 
     return memories.map(toMemoryItem);
+  }
+
+  public async listMemoryItemsByIds(input: {
+    founderId: string;
+    memoryIds: readonly string[];
+  }): Promise<MemoryItem[]> {
+    if (input.memoryIds.length === 0) {
+      return [];
+    }
+
+    const memories = await this.database.memoryItem.findMany({
+      where: {
+        founderId: input.founderId,
+        archivedAt: null,
+        deletedAt: null,
+        id: {
+          in: [...input.memoryIds],
+        },
+      },
+    });
+    const order = new Map(input.memoryIds.map((memoryId, index) => [memoryId, index]));
+
+    return memories
+      .map(toMemoryItem)
+      .sort((left, right) => (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0));
   }
 
   public async createImportedMemoryItems(input: {
@@ -156,7 +181,19 @@ export class MemoryRepository {
     return createdMemories;
   }
 
-  public async deleteFounderMemoryItems(founderId: string): Promise<number> {
+  public async deleteFounderMemoryItems(founderId: string): Promise<string[]> {
+    const memories = await this.database.memoryItem.findMany({
+      where: {
+        founderId,
+        archivedAt: null,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+      },
+    });
+    const memoryIds = memories.map((memory) => memory.id);
+
     const result = await this.database.memoryItem.deleteMany({
       where: {
         founderId,
@@ -165,7 +202,7 @@ export class MemoryRepository {
       },
     });
 
-    return result.count;
+    return memoryIds.slice(0, result.count);
   }
 
   public async listRecentMemoryContext(
@@ -255,6 +292,22 @@ export class MemoryRepository {
     });
 
     return toMemoryItem(memory);
+  }
+
+  public async updateMemoryVectorRef(input: {
+    founderId: string;
+    memoryId: string;
+    vectorRef: string | null;
+  }): Promise<void> {
+    await this.database.memoryItem.updateMany({
+      where: {
+        founderId: input.founderId,
+        id: input.memoryId,
+      },
+      data: {
+        vectorRef: input.vectorRef,
+      },
+    });
   }
 
   public async archiveMemoryItem(input: {

@@ -1,4 +1,5 @@
 import Fastify from "fastify";
+import type { AddressInfo } from "node:net";
 import type {
   ArchiveMemoryItemResponse,
   DeleteMemoryItemResponse,
@@ -17,6 +18,133 @@ import { correlationPlugin } from "../lib/correlation.js";
 import { founderSessionPlugin } from "../lib/founder-session.js";
 
 const database = getPrismaClient();
+
+function cosineSimilarity(left: readonly number[], right: readonly number[]): number {
+  let dotProduct = 0;
+  let leftMagnitude = 0;
+  let rightMagnitude = 0;
+
+  for (let index = 0; index < Math.min(left.length, right.length); index += 1) {
+    const leftValue = left[index] ?? 0;
+    const rightValue = right[index] ?? 0;
+
+    dotProduct += leftValue * rightValue;
+    leftMagnitude += leftValue ** 2;
+    rightMagnitude += rightValue ** 2;
+  }
+
+  if (leftMagnitude === 0 || rightMagnitude === 0) {
+    return 0;
+  }
+
+  return Math.max(0, dotProduct / Math.sqrt(leftMagnitude * rightMagnitude));
+}
+
+async function createFakeQdrantServer() {
+  const qdrant = Fastify();
+  const points = new Map<
+    string,
+    {
+      vector: number[];
+      payload: Record<string, unknown>;
+    }
+  >();
+  let collectionReady = false;
+
+  qdrant.get("/collections/:collectionName", async (_request, reply) =>
+    collectionReady ? reply.status(200).send({ result: {} }) : reply.status(404).send({}),
+  );
+
+  qdrant.put("/collections/:collectionName", async (_request, reply) => {
+    collectionReady = true;
+
+    return reply.status(200).send({ result: true });
+  });
+
+  qdrant.put("/collections/:collectionName/points", async (request, reply) => {
+    const body = request.body as {
+      points?: ReadonlyArray<{
+        id?: unknown;
+        vector?: unknown;
+        payload?: unknown;
+      }>;
+    };
+
+    for (const point of body.points ?? []) {
+      if (
+        typeof point.id === "string" &&
+        Array.isArray(point.vector) &&
+        point.payload &&
+        typeof point.payload === "object"
+      ) {
+        points.set(point.id, {
+          vector: point.vector.filter((value): value is number => typeof value === "number"),
+          payload: point.payload as Record<string, unknown>,
+        });
+      }
+    }
+
+    return reply.status(200).send({ result: true });
+  });
+
+  qdrant.post("/collections/:collectionName/points/search", async (request, reply) => {
+    const body = request.body as {
+      vector?: unknown;
+      limit?: unknown;
+      filter?: {
+        must?: ReadonlyArray<{
+          key?: unknown;
+          match?: {
+            value?: unknown;
+          };
+        }>;
+      };
+    };
+    const founderFilter = body.filter?.must?.find((item) => item.key === "founderId")?.match?.value;
+    const queryVector = Array.isArray(body.vector)
+      ? body.vector.filter((value): value is number => typeof value === "number")
+      : [];
+    const limit = typeof body.limit === "number" ? body.limit : 10;
+    const result = [...points.entries()]
+      .filter(([, point]) => point.payload.founderId === founderFilter)
+      .map(([id, point]) => ({
+        id,
+        payload: point.payload,
+        score: cosineSimilarity(queryVector, point.vector),
+      }))
+      .sort((left, right) => right.score - left.score)
+      .slice(0, limit);
+
+    return reply.status(200).send({ result });
+  });
+
+  qdrant.post("/collections/:collectionName/points/delete", async (request, reply) => {
+    const body = request.body as {
+      points?: readonly unknown[];
+    };
+
+    for (const pointId of body.points ?? []) {
+      if (typeof pointId === "string") {
+        points.delete(pointId);
+      }
+    }
+
+    return reply.status(200).send({ result: true });
+  });
+
+  await qdrant.listen({
+    host: "127.0.0.1",
+    port: 0,
+  });
+
+  return {
+    baseUrl: `http://127.0.0.1:${(qdrant.server.address() as AddressInfo).port}`,
+    close: () => qdrant.close(),
+    get pointCount() {
+      return points.size;
+    },
+  };
+}
 
 async function createFounderWithSession(input: {
   founderId: string;
@@ -47,10 +175,21 @@ async function main() {
   const founderBToken = `faios_memory_b_${suffix}`;
   const previousAppEnv = process.env.APP_ENV;
   const previousDevAuthEnabled = process.env.FAIOS_DEV_AUTH_ENABLED;
+  const previousQdrantUrl = process.env.QDRANT_URL;
+  const previousQdrantCollection = process.env.QDRANT_MEMORY_COLLECTION;
+  const previousEmbeddingProvider = process.env.MEMORY_EMBEDDING_PROVIDER;
+  const previousEmbeddingDimensions = process.env.MEMORY_EMBEDDING_DIMENSIONS;
+  const previousVectorSyncMode = process.env.MEMORY_VECTOR_SYNC_MODE;
   const server = Fastify();
+  const qdrant = await createFakeQdrantServer();
 
   process.env.APP_ENV = "production";
   process.env.FAIOS_DEV_AUTH_ENABLED = "false";
+  process.env.QDRANT_URL = qdrant.baseUrl;
+  process.env.QDRANT_MEMORY_COLLECTION = `memory_integration_${suffix}`;
+  process.env.MEMORY_EMBEDDING_PROVIDER = "deterministic";
+  process.env.MEMORY_EMBEDDING_DIMENSIONS = "64";
+  process.env.MEMORY_VECTOR_SYNC_MODE = "inline";
 
   await server.register(correlationPlugin);
   await server.register(founderSessionPlugin);
@@ -385,6 +524,51 @@ async function main() {
       throw new Error("Memory import stored unredacted sensitive content.");
     }
 
+    const importedVectorRefs = await database.memoryItem.findMany({
+      where: {
+        id: {
+          in: appendImportPayload.memories.map((memory) => memory.id),
+        },
+      },
+      select: {
+        vectorRef: true,
+      },
+    });
+
+    if (importedVectorRefs.some((memory) => !memory.vectorRef)) {
+      throw new Error("Memory import did not sync vectors for imported memories.");
+    }
+
+    const semanticImportSearchResponse = await server.inject({
+      method: "POST",
+      url: "/api/v1/memory/search",
+      headers: {
+        authorization: `Bearer ${founderAToken}`,
+      },
+      payload: {
+        query: "company stage seed",
+        limit: 3,
+      },
+    });
+
+    if (semanticImportSearchResponse.statusCode !== 200) {
+      throw new Error(
+        `Expected semantic memory search 200, received ${semanticImportSearchResponse.statusCode}.`,
+      );
+    }
+
+    const semanticImportSearchPayload: SearchMemoryResponse = semanticImportSearchResponse.json();
+
+    if (
+      !semanticImportSearchPayload.matches.some(
+        (match) =>
+          match.matchReason === "Founder-scoped semantic memory match" &&
+          match.memory.content.includes("Company stage is seed"),
+      )
+    ) {
+      throw new Error("Memory search did not use synced Qdrant vectors.");
+    }
+
     const replaceImportResponse = await server.inject({
       method: "POST",
       url: "/api/v1/memory/import",
@@ -497,6 +681,12 @@ async function main() {
     if (purgedMemory || !otherFounderRetainedMemory) {
       throw new Error("Memory retention purge did not respect founder boundaries.");
     }
+
+    if (qdrant.pointCount !== 0) {
+      throw new Error(
+        "Memory vector sync left stale Qdrant points after replace/delete lifecycle.",
+      );
+    }
   } finally {
     if (previousAppEnv === undefined) {
       delete process.env.APP_ENV;
@@ -510,7 +700,38 @@ async function main() {
       process.env.FAIOS_DEV_AUTH_ENABLED = previousDevAuthEnabled;
     }
 
+    if (previousQdrantUrl === undefined) {
+      delete process.env.QDRANT_URL;
+    } else {
+      process.env.QDRANT_URL = previousQdrantUrl;
+    }
+
+    if (previousQdrantCollection === undefined) {
+      delete process.env.QDRANT_MEMORY_COLLECTION;
+    } else {
+      process.env.QDRANT_MEMORY_COLLECTION = previousQdrantCollection;
+    }
+
+    if (previousEmbeddingProvider === undefined) {
+      delete process.env.MEMORY_EMBEDDING_PROVIDER;
+    } else {
+      process.env.MEMORY_EMBEDDING_PROVIDER = previousEmbeddingProvider;
+    }
+
+    if (previousEmbeddingDimensions === undefined) {
+      delete process.env.MEMORY_EMBEDDING_DIMENSIONS;
+    } else {
+      process.env.MEMORY_EMBEDDING_DIMENSIONS = previousEmbeddingDimensions;
+    }
+
+    if (previousVectorSyncMode === undefined) {
+      delete process.env.MEMORY_VECTOR_SYNC_MODE;
+    } else {
+      process.env.MEMORY_VECTOR_SYNC_MODE = previousVectorSyncMode;
+    }
+
     await server.close();
+    await qdrant.close();
     await database.founderAccount
       .delete({
         where: {

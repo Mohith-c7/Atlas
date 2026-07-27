@@ -836,6 +836,34 @@ M13.2 closes the remaining founder memory intelligence gaps: semantic search, im
 - `pnpm --filter @faios/database exec prisma migrate deploy --schema prisma/schema.prisma`
 - `pnpm --filter @faios/business-api test:integration`
 
+## Fifteenth Next Implementation Slice
+
+M13.3 makes Qdrant the true semantic memory layer by replacing placeholder vectors with provider-backed embeddings and vector synchronization.
+
+### M13.3 Checklist
+
+- [x] Add memory embedding provider boundary.
+- [x] Add OpenAI-compatible embedding provider.
+- [x] Keep deterministic embeddings only as a local/test fallback provider.
+- [x] Add Qdrant collection readiness and batch vector upsert.
+- [x] Use deterministic UUID point ids for Qdrant and store Prisma memory ids in payload.
+- [x] Sync memory vectors on command-derived memory creation.
+- [x] Sync memory vectors on founder update, import/restore, and merge.
+- [x] Remove Qdrant vectors on archive, soft delete, replace import, and merge duplicate deletion.
+- [x] Make memory search Qdrant-first with safe Postgres hydration.
+- [x] Preserve lexical fallback when embedding/Qdrant infrastructure is unavailable.
+- [x] Add environment controls for embedding provider, dimensions, and vector sync mode.
+- [x] Add integration coverage with an in-process fake Qdrant server.
+
+### M13.3 Completion Gate
+
+- `pnpm format:check`
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm test`
+- `pnpm build`
+- `pnpm --filter @faios/business-api test:integration`
+
 ## Out Of Scope For V1
 
 - Team workspaces.

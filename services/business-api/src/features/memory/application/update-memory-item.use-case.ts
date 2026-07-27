@@ -4,13 +4,16 @@ import { AppError } from "../../../lib/errors.js";
 import type { FounderSession } from "../../../lib/founder-session.js";
 import { resolveFounderAccount } from "../../commands/infrastructure/founder-resolver.js";
 import { MemoryRepository } from "../infrastructure/memory.repository.js";
+import { MemoryVectorSyncService } from "../infrastructure/memory-vector-sync.service.js";
 import { redactMemoryContent } from "./redact-memory-content.js";
 
 export class UpdateMemoryItemUseCase {
   private readonly repository: MemoryRepository;
+  private readonly vectorSync: MemoryVectorSyncService;
 
   public constructor(private readonly database: PrismaClient) {
     this.repository = new MemoryRepository(database);
+    this.vectorSync = new MemoryVectorSyncService(database);
   }
 
   public async execute(input: {
@@ -36,6 +39,7 @@ export class UpdateMemoryItemUseCase {
         content,
       },
     });
+    await this.vectorSync.scheduleUpsert(founder.id, [memory]);
 
     return {
       memory,

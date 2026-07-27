@@ -3,6 +3,7 @@ import type { PrismaClient } from "@faios/database";
 import { AppError } from "../../../lib/errors.js";
 import type { FounderSession } from "../../../lib/founder-session.js";
 import { extractMemoryCandidates, MemoryRepository } from "../../memory/index.js";
+import { MemoryVectorSyncService } from "../../memory/infrastructure/memory-vector-sync.service.js";
 import { CapabilityRegistry } from "../../mcp-capabilities/index.js";
 import { AiOrchestratorClient } from "../infrastructure/ai-orchestrator.client.js";
 import { CommandRepository } from "../infrastructure/command.repository.js";
@@ -21,12 +22,14 @@ export class CreateCommandUseCase {
   private readonly memoryRepository: MemoryRepository;
   private readonly aiOrchestrator: AiOrchestratorClient;
   private readonly capabilityRegistry: CapabilityRegistry;
+  private readonly memoryVectorSync: MemoryVectorSyncService;
 
   public constructor(private readonly database: PrismaClient) {
     this.repository = new CommandRepository(database);
     this.memoryRepository = new MemoryRepository(database);
     this.aiOrchestrator = new AiOrchestratorClient();
     this.capabilityRegistry = new CapabilityRegistry();
+    this.memoryVectorSync = new MemoryVectorSyncService(database);
   }
 
   public async execute(input: CreateCommandUseCaseInput): Promise<CreateCommandResponse> {
@@ -42,7 +45,7 @@ export class CreateCommandUseCase {
     try {
       const memoryCandidates = extractMemoryCandidates(input.request.input);
 
-      await Promise.all(
+      const createdMemories = await Promise.all(
         memoryCandidates.map((candidate) =>
           this.memoryRepository.createMemoryItem({
             founderId: founder.id,
@@ -57,6 +60,7 @@ export class CreateCommandUseCase {
           }),
         ),
       );
+      await this.memoryVectorSync.scheduleUpsert(founder.id, createdMemories);
 
       const memoryContext = await this.memoryRepository.listRecentMemoryContext(
         founder.id,
