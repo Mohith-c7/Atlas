@@ -38,7 +38,7 @@ export const DEFAULT_MCP_CAPABILITIES = [
     provider: "github",
     label: "Create repository issues",
     description: "Prepare engineering issues in connected source control tools.",
-    requiresApproval: false,
+    requiresApproval: true,
     status: "available",
   },
 ] satisfies McpCapability[];
