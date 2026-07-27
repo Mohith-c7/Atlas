@@ -8,9 +8,11 @@ import {
   useConnectGitHubIntegration,
   useDisconnectIntegration,
   useIntegrationConnections,
+  useIntegrationProviderStatus,
   useReconnectIntegration,
   useRotateGitHubCredential,
   useStartGitHubOAuth,
+  useTestIntegrationConnection,
 } from "../hooks/use-integration-connections";
 import { githubOAuthCallbackUrl } from "../../../lib/config";
 
@@ -24,13 +26,41 @@ function formatError(error: Error) {
   return error.message;
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) {
+    return undefined;
+  }
+
+  return new Date(value).toLocaleString();
+}
+
+function humanizeKey(value: string) {
+  return value.replaceAll("_", " ");
+}
+
+function detectExpiredToken(message?: string | null) {
+  if (!message) {
+    return false;
+  }
+
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("expired") ||
+    normalized.includes("invalid token") ||
+    normalized.includes("bad credentials") ||
+    normalized.includes("unauthorized")
+  );
+}
+
 export function GitHubConnectionPanel() {
   const connections = useIntegrationConnections();
+  const providerStatus = useIntegrationProviderStatus("github");
   const connectGitHub = useConnectGitHubIntegration();
   const disconnectIntegration = useDisconnectIntegration();
   const reconnectIntegration = useReconnectIntegration();
   const rotateGitHubCredential = useRotateGitHubCredential();
   const startGitHubOAuth = useStartGitHubOAuth();
+  const testIntegrationConnection = useTestIntegrationConnection();
   const githubConnection = connections.data?.connections.find(
     (connection) => connection.provider === "github",
   );
@@ -93,6 +123,14 @@ export function GitHubConnectionPanel() {
       return formatError(rotateGitHubCredential.error);
     }
 
+    if (providerStatus.error) {
+      return formatError(providerStatus.error);
+    }
+
+    if (testIntegrationConnection.error) {
+      return formatError(testIntegrationConnection.error);
+    }
+
     if (connections.error) {
       return formatError(connections.error);
     }
@@ -102,10 +140,25 @@ export function GitHubConnectionPanel() {
     connectGitHub.error,
     connections.error,
     disconnectIntegration.error,
+    providerStatus.error,
     reconnectIntegration.error,
     rotateGitHubCredential.error,
     startGitHubOAuth.error,
+    testIntegrationConnection.error,
   ]);
+
+  const providerReadiness = providerStatus.data?.provider;
+  const readinessCheckedAt = formatDateTime(providerReadiness?.checkedAt);
+  const healthCheckedAt = formatDateTime(githubConnection?.lastHealthCheckedAt);
+  const healthMessage =
+    githubConnection?.lastHealthMessage ??
+    providerReadiness?.capabilities.find((capability) => capability.reason)?.reason;
+  const hasExpiredToken =
+    detectExpiredToken(healthMessage) || detectExpiredToken(githubConnection?.statusReason);
+  const readyCapabilityCount =
+    providerReadiness?.capabilities.filter((capability) => capability.status === "ready").length ??
+    0;
+  const totalCapabilityCount = providerReadiness?.capabilities.length ?? 0;
 
   function handleOAuthStart() {
     if (!canStartOAuth) {
@@ -190,6 +243,10 @@ export function GitHubConnectionPanel() {
     );
   }
 
+  function handleConnectionTest() {
+    testIntegrationConnection.mutate("github");
+  }
+
   return (
     <section className="rounded-lg border border-border bg-white p-4 shadow-sm sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -198,25 +255,87 @@ export function GitHubConnectionPanel() {
           <h2 className="mt-1 text-lg font-semibold text-foreground">GitHub connection</h2>
         </div>
         <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
-          {githubConnection?.status ?? "not connected"}
+          {providerReadiness?.connected
+            ? providerReadiness.provider
+            : (githubConnection?.status ?? "not connected")}
         </span>
       </div>
 
       {githubConnection ? (
         <div className="mt-4 rounded-md border border-border bg-background p-3 text-xs text-muted">
-          <p className="font-medium text-foreground">{githubConnection.accountLabel ?? "GitHub"}</p>
-          <p className="mt-1">
-            {githubConnection.metadata?.owner}/{githubConnection.metadata?.repo}
-          </p>
-          <p className="mt-1">{githubConnection.capabilityKeys.join(", ")}</p>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <p className="font-medium text-foreground">
+                {githubConnection.accountLabel ?? "GitHub"}
+              </p>
+              <p className="mt-1">
+                {githubConnection.metadata?.owner}/{githubConnection.metadata?.repo}
+              </p>
+            </div>
+            <span className="rounded-full border border-border bg-white px-2 py-1 font-medium text-muted">
+              {providerReadiness
+                ? `${readyCapabilityCount}/${totalCapabilityCount} ready`
+                : "health pending"}
+            </span>
+          </div>
+          <p className="mt-2 font-medium text-foreground">Permissions</p>
+          <p className="mt-1">{githubConnection.capabilityKeys.map(humanizeKey).join(", ")}</p>
           {githubConnection.statusReason ? (
             <p className="mt-1 text-red-700">{githubConnection.statusReason}</p>
           ) : null}
-          {githubConnection.connectedAt ? (
-            <p className="mt-1">
-              Connected {new Date(githubConnection.connectedAt).toLocaleString()}
+          {healthMessage ? <p className="mt-1">{healthMessage}</p> : null}
+          {hasExpiredToken ? (
+            <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-amber-800">
+              Token health requires attention. Rotate the credential or reconnect GitHub before
+              running actions.
             </p>
           ) : null}
+          {githubConnection.connectedAt || githubConnection.disconnectedAt ? (
+            <p className="mt-2">
+              {githubConnection.status === "disconnected" && githubConnection.disconnectedAt
+                ? `Disconnected ${formatDateTime(githubConnection.disconnectedAt)}`
+                : `Connected ${formatDateTime(githubConnection.connectedAt)}`}
+            </p>
+          ) : null}
+          {healthCheckedAt || readinessCheckedAt ? (
+            <p className="mt-1">Last checked {healthCheckedAt ?? readinessCheckedAt}</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {providerReadiness ? (
+        <div className="mt-3 rounded-md border border-border bg-background p-3 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="font-semibold text-foreground">Provider health</p>
+            <button
+              className="inline-flex min-h-8 items-center justify-center rounded-md border border-border bg-white px-3 font-semibold text-foreground transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={testIntegrationConnection.isPending}
+              onClick={handleConnectionTest}
+              type="button"
+            >
+              {testIntegrationConnection.isPending ? "Testing..." : "Test connection"}
+            </button>
+          </div>
+          <div className="mt-2 grid gap-2">
+            {providerReadiness.capabilities.map((capability) => (
+              <div
+                className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-border bg-white px-3 py-2"
+                key={capability.capabilityKey}
+              >
+                <div>
+                  <p className="font-medium text-foreground">
+                    {humanizeKey(capability.capabilityKey)}
+                  </p>
+                  {capability.reason ? (
+                    <p className="mt-1 text-muted">{capability.reason}</p>
+                  ) : null}
+                </div>
+                <span className="rounded-full border border-border px-2 py-1 font-medium text-muted">
+                  {humanizeKey(capability.status)}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       ) : null}
 

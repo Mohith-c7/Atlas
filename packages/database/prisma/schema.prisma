@@ -84,6 +84,7 @@ model FounderAccount {
   companyProfile CompanyProfile?
   integrations   IntegrationConnection[]
   oauthStates    IntegrationOAuthState[]
+  permissionSummaries IntegrationPermissionSummary[]
   lifecycleEvents IntegrationLifecycleEvent[]
   conversations  Conversation[]
   commands       Command[]
@@ -260,11 +261,29 @@ model IntegrationConnection {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   credential     IntegrationCredential?
+  permissionSummary IntegrationPermissionSummary?
   invocations    ToolInvocation[]
   lifecycleEvents IntegrationLifecycleEvent[]
 
   @@unique([founderId, provider])
   @@index([founderId, provider])
+}
+
+model IntegrationPermissionSummary {
+  id            String                @id @default(cuid())
+  founderId     String
+  founder       FounderAccount        @relation(fields: [founderId], references: [id], onDelete: Cascade)
+  integrationId String                @unique
+  integration   IntegrationConnection @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  provider      String
+  scopes        String[]
+  permissions   Json?
+  checkedAt     DateTime
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@index([founderId, provider])
+  @@index([checkedAt])
 }
 
 model IntegrationCredential {
@@ -275,10 +294,16 @@ model IntegrationCredential {
   keyVersion      String
   rotatedAt       DateTime?
   rotationReason  String?
+  expiresAt       DateTime?
+  refreshTokenEncryptedPayload Json?
+  lastRefreshAttemptAt DateTime?
+  lastRefreshedAt DateTime?
+  refreshFailureReason String?
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
 
   @@index([keyVersion])
+  @@index([expiresAt])
 }
 
 model IntegrationLifecycleEvent {

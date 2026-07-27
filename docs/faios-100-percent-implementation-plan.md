@@ -626,6 +626,38 @@ M10.2 adds founder-controlled integration lifecycle transitions and credential r
 - `pnpm build`
 - `pnpm --filter @faios/business-api test:integration`
 
+## Seventh Next Implementation Slice
+
+M10.3 adds provider health snapshots, permission summaries, and credential refresh/expiry safety boundaries.
+
+### M10.3 Checklist
+
+- [x] Add provider permission summary model.
+- [x] Add credential expiry and refresh metadata fields.
+- [x] Add formal Prisma migration.
+- [x] Add shared health, permission summary, and refresh contracts.
+- [x] Add explicit provider health-check API route.
+- [x] Persist latest provider health status and message.
+- [x] Persist coarse permission summaries without raw provider payloads.
+- [x] Add manual-token credential refresh boundary.
+- [x] Record audit events for health checks, permission checks, and refresh attempts.
+- [x] Teach MCP adapters to surface credential unavailable reasons.
+- [x] Deny worker execution for disconnected, unhealthy, and expired credentials.
+- [x] Add integration UI health, permission, and test-connection states.
+- [x] Add runtime coverage for lifecycle health, refresh metadata, and worker denials.
+
+### M10.3 Completion Gate
+
+- `pnpm --filter @faios/database prisma:generate`
+- Prisma migration deploy validation
+- `pnpm format:check`
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm test`
+- `pnpm build`
+- `pnpm --filter @faios/business-api test:integration`
+- `pnpm --filter @faios/workers test:integration`
+
 ## Out Of Scope For V1
 
 - Team workspaces.

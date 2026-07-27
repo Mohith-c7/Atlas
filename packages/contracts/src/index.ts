@@ -28,6 +28,13 @@ export const integrationProviderSchema = z.enum(["github"]);
 
 export const integrationConnectionStatusSchema = z.enum(["connected", "disconnected", "disabled"]);
 
+export const integrationHealthStatusSchema = z.enum([
+  "healthy",
+  "degraded",
+  "unhealthy",
+  "unknown",
+]);
+
 export const founderSessionSourceSchema = z.enum(["development", "session"]);
 
 export const currentFounderResponseSchema = z.object({
@@ -298,16 +305,37 @@ export const providerCapabilityReadinessSchema = z.object({
   checkedAt: z.string(),
 });
 
+export const integrationPermissionSummarySchema = z.object({
+  provider: z.string(),
+  scopes: z.array(z.string()),
+  permissions: z.record(z.unknown()).nullable().optional(),
+  checkedAt: z.string(),
+});
+
 export const integrationProviderStatusSchema = z.object({
   provider: z.string(),
   connected: z.boolean(),
   connection: integrationConnectionSchema.nullable().optional(),
   capabilities: z.array(providerCapabilityReadinessSchema),
+  permissionSummary: integrationPermissionSummarySchema.nullable().optional(),
   checkedAt: z.string(),
 });
 
 export const getIntegrationProviderStatusResponseSchema = z.object({
   provider: integrationProviderStatusSchema,
+  correlationId: z.string(),
+});
+
+export const testIntegrationConnectionResponseSchema = z.object({
+  provider: integrationProviderStatusSchema,
+  correlationId: z.string(),
+});
+
+export const refreshIntegrationCredentialResponseSchema = z.object({
+  provider: integrationProviderSchema,
+  connection: integrationConnectionSchema,
+  refreshed: z.boolean(),
+  reason: z.string().optional(),
   correlationId: z.string(),
 });
 
@@ -562,6 +590,8 @@ export type GitHubCreateIssueExecutionPayload = z.infer<
 export type IntegrationConnection = z.infer<typeof integrationConnectionSchema>;
 export type IntegrationConnectionStatus = z.infer<typeof integrationConnectionStatusSchema>;
 export type IntegrationCatalogItem = z.infer<typeof integrationCatalogItemSchema>;
+export type IntegrationHealthStatus = z.infer<typeof integrationHealthStatusSchema>;
+export type IntegrationPermissionSummary = z.infer<typeof integrationPermissionSummarySchema>;
 export type IntegrationProviderStatus = z.infer<typeof integrationProviderStatusSchema>;
 export type IntegrationProvider = z.infer<typeof integrationProviderSchema>;
 export type ListCapabilitiesResponse = z.infer<typeof listCapabilitiesResponseSchema>;
@@ -573,6 +603,12 @@ export type ListIntegrationConnectionsResponse = z.infer<
 export type ListIntegrationCatalogResponse = z.infer<typeof listIntegrationCatalogResponseSchema>;
 export type GetIntegrationProviderStatusResponse = z.infer<
   typeof getIntegrationProviderStatusResponseSchema
+>;
+export type TestIntegrationConnectionResponse = z.infer<
+  typeof testIntegrationConnectionResponseSchema
+>;
+export type RefreshIntegrationCredentialResponse = z.infer<
+  typeof refreshIntegrationCredentialResponseSchema
 >;
 export type DisconnectIntegrationRequest = z.infer<typeof disconnectIntegrationRequestSchema>;
 export type DisconnectIntegrationResponse = z.infer<typeof disconnectIntegrationResponseSchema>;

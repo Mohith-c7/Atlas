@@ -2,6 +2,7 @@ import type {
   GitHubIntegrationConnectionRequest,
   IntegrationConnection as IntegrationConnectionContract,
   IntegrationConnectionStatus,
+  IntegrationPermissionSummary,
   IntegrationProvider,
 } from "@faios/contracts";
 import type { Prisma, PrismaClient } from "@faios/database";
@@ -13,7 +14,17 @@ type IntegrationConnectionRecord = Awaited<
   ReturnType<PrismaClient["integrationConnection"]["findMany"]>
 >[number];
 
-type LifecycleEventType = "connected" | "disconnected" | "reconnected" | "credential_rotated";
+type LifecycleEventType =
+  | "connected"
+  | "disconnected"
+  | "reconnected"
+  | "credential_rotated"
+  | "health_checked"
+  | "permission_checked"
+  | "credential_refresh_attempted"
+  | "credential_refreshed"
+  | "credential_refresh_failed"
+  | "execution_denied_expired_credential";
 
 function isIntegrationProvider(value: string): value is IntegrationProvider {
   return value === "github";
@@ -60,6 +71,25 @@ function toContractConnection(
     lastHealthMessage: connection.lastHealthMessage,
     createdAt: connection.createdAt.toISOString(),
     updatedAt: connection.updatedAt.toISOString(),
+  };
+}
+
+function toPermissionSummaryContract(summary: {
+  readonly provider: string;
+  readonly scopes: string[];
+  readonly permissions: Prisma.JsonValue | null;
+  readonly checkedAt: Date;
+}): IntegrationPermissionSummary {
+  return {
+    provider: summary.provider,
+    scopes: summary.scopes,
+    permissions:
+      summary.permissions &&
+      typeof summary.permissions === "object" &&
+      !Array.isArray(summary.permissions)
+        ? summary.permissions
+        : null,
+    checkedAt: summary.checkedAt.toISOString(),
   };
 }
 
@@ -167,6 +197,165 @@ export class IntegrationConnectionRepository {
     });
 
     return connection ? toContractConnection(connection) : undefined;
+  }
+
+  public async getConnectionRecordByFounderAndProvider(
+    founderId: string,
+    provider: IntegrationProvider,
+  ) {
+    return this.database.integrationConnection.findUnique({
+      where: {
+        founderId_provider: {
+          founderId,
+          provider,
+        },
+      },
+      include: {
+        credential: true,
+        permissionSummary: true,
+      },
+    });
+  }
+
+  public async getPermissionSummary(
+    founderId: string,
+    provider: IntegrationProvider,
+  ): Promise<IntegrationPermissionSummary | undefined> {
+    const summary = await this.database.integrationPermissionSummary.findFirst({
+      where: {
+        founderId,
+        provider,
+      },
+      orderBy: {
+        checkedAt: "desc",
+      },
+    });
+
+    return summary ? toPermissionSummaryContract(summary) : undefined;
+  }
+
+  public async updateConnectionHealth(input: {
+    readonly founderId: string;
+    readonly provider: IntegrationProvider;
+    readonly status: "ready" | "not_ready";
+    readonly message?: string;
+    readonly checkedAt: Date;
+  }): Promise<IntegrationConnectionContract | undefined> {
+    const connection = await this.database.integrationConnection.findUnique({
+      where: {
+        founderId_provider: {
+          founderId: input.founderId,
+          provider: input.provider,
+        },
+      },
+    });
+
+    if (!connection) {
+      return undefined;
+    }
+
+    const updatedConnection = await this.database.integrationConnection.update({
+      where: {
+        founderId_provider: {
+          founderId: input.founderId,
+          provider: input.provider,
+        },
+      },
+      data: {
+        lastHealthStatus: input.status,
+        lastHealthCheckedAt: input.checkedAt,
+        lastHealthMessage: input.message,
+      },
+    });
+
+    await this.recordLifecycleEvent({
+      founderId: input.founderId,
+      integrationId: updatedConnection.id,
+      provider: input.provider,
+      eventType: "health_checked",
+      reason: input.message,
+      metadata: {
+        status: input.status,
+      },
+    });
+
+    return toContractConnection(updatedConnection);
+  }
+
+  public async upsertPermissionSummary(input: {
+    readonly founderId: string;
+    readonly integrationId: string;
+    readonly provider: IntegrationProvider;
+    readonly scopes: readonly string[];
+    readonly permissions: Prisma.InputJsonValue;
+    readonly checkedAt: Date;
+  }): Promise<IntegrationPermissionSummary> {
+    const summary = await this.database.integrationPermissionSummary.upsert({
+      where: {
+        integrationId: input.integrationId,
+      },
+      create: {
+        founderId: input.founderId,
+        integrationId: input.integrationId,
+        provider: input.provider,
+        scopes: [...input.scopes],
+        permissions: input.permissions,
+        checkedAt: input.checkedAt,
+      },
+      update: {
+        scopes: [...input.scopes],
+        permissions: input.permissions,
+        checkedAt: input.checkedAt,
+      },
+    });
+
+    await this.recordLifecycleEvent({
+      founderId: input.founderId,
+      integrationId: input.integrationId,
+      provider: input.provider,
+      eventType: "permission_checked",
+      metadata: {
+        scopes: [...input.scopes],
+      },
+    });
+
+    return toPermissionSummaryContract(summary);
+  }
+
+  public async recordCredentialRefreshAttempt(input: {
+    readonly founderId: string;
+    readonly integrationId: string;
+    readonly provider: IntegrationProvider;
+    readonly attemptedAt: Date;
+    readonly result: "not_supported" | "refreshed" | "failed";
+    readonly reason?: string;
+  }): Promise<void> {
+    await this.database.integrationCredential.update({
+      where: {
+        integrationId: input.integrationId,
+      },
+      data: {
+        lastRefreshAttemptAt: input.attemptedAt,
+        lastRefreshedAt: input.result === "refreshed" ? input.attemptedAt : undefined,
+        refreshFailureReason: input.result === "refreshed" ? null : input.reason,
+      },
+    });
+
+    await this.recordLifecycleEvent({
+      founderId: input.founderId,
+      integrationId: input.integrationId,
+      provider: input.provider,
+      eventType:
+        input.result === "refreshed"
+          ? "credential_refreshed"
+          : input.result === "failed"
+            ? "credential_refresh_failed"
+            : "credential_refresh_attempted",
+      reason: input.reason,
+      metadata: {
+        result: input.result,
+      },
+    });
   }
 
   public async disconnectConnection(input: {

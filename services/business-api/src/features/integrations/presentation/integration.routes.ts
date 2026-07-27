@@ -15,8 +15,10 @@ import { GetIntegrationProviderStatusUseCase } from "../application/get-integrat
 import { ListIntegrationCatalogUseCase } from "../application/list-integration-catalog.use-case.js";
 import { ListIntegrationConnectionsUseCase } from "../application/list-integration-connections.use-case.js";
 import { ReconnectIntegrationUseCase } from "../application/reconnect-integration.use-case.js";
+import { RefreshIntegrationCredentialUseCase } from "../application/refresh-integration-credential.use-case.js";
 import { RotateGitHubCredentialUseCase } from "../application/rotate-github-credential.use-case.js";
 import { StartGitHubOAuthUseCase } from "../application/start-github-oauth.use-case.js";
+import { TestIntegrationConnectionUseCase } from "../application/test-integration-connection.use-case.js";
 
 function getQueryValue(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
@@ -191,6 +193,102 @@ export const integrationRoutes: FastifyPluginCallback = (server, _options, done)
             error,
           },
           "Failed to reconnect integration",
+        );
+
+        return sendError(reply, error, request.correlationId);
+      }
+    },
+  );
+
+  server.post<{ Params: { provider: string } }>(
+    "/api/v1/integrations/:provider/health-check",
+    async (request, reply) => {
+      const provider = integrationProviderSchema.safeParse(request.params.provider);
+
+      if (!provider.success) {
+        return reply.status(400).send({
+          code: "VALIDATION_ERROR",
+          message: "Invalid integration provider.",
+          correlationId: request.correlationId,
+          details: provider.error.flatten(),
+        });
+      }
+
+      const useCase = new TestIntegrationConnectionUseCase(getPrismaClient());
+
+      try {
+        const response = await useCase.execute({
+          founderSession: request.founderSession,
+          provider: provider.data,
+          correlationId: request.correlationId,
+        });
+
+        request.log.info(
+          {
+            provider: response.provider.provider,
+            connected: response.provider.connected,
+            correlationId: response.correlationId,
+          },
+          "Integration connection health checked",
+        );
+
+        return reply.status(200).send(response);
+      } catch (error) {
+        request.log.error(
+          {
+            provider: request.params.provider,
+            correlationId: request.correlationId,
+            error,
+          },
+          "Failed to health check integration",
+        );
+
+        return sendError(reply, error, request.correlationId);
+      }
+    },
+  );
+
+  server.post<{ Params: { provider: string } }>(
+    "/api/v1/integrations/:provider/credentials/refresh",
+    async (request, reply) => {
+      const provider = integrationProviderSchema.safeParse(request.params.provider);
+
+      if (!provider.success) {
+        return reply.status(400).send({
+          code: "VALIDATION_ERROR",
+          message: "Invalid integration provider.",
+          correlationId: request.correlationId,
+          details: provider.error.flatten(),
+        });
+      }
+
+      const useCase = new RefreshIntegrationCredentialUseCase(getPrismaClient());
+
+      try {
+        const response = await useCase.execute({
+          founderSession: request.founderSession,
+          provider: provider.data,
+          correlationId: request.correlationId,
+        });
+
+        request.log.info(
+          {
+            provider: response.provider,
+            refreshed: response.refreshed,
+            correlationId: response.correlationId,
+          },
+          "Integration credential refresh attempted",
+        );
+
+        return reply.status(200).send(response);
+      } catch (error) {
+        request.log.error(
+          {
+            provider: request.params.provider,
+            correlationId: request.correlationId,
+            error,
+          },
+          "Failed to refresh integration credential",
         );
 
         return sendError(reply, error, request.correlationId);

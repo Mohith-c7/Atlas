@@ -51,11 +51,19 @@ export type ProviderCapabilityReadiness = {
   checkedAt: string;
 };
 
+export type IntegrationPermissionSummary = {
+  provider: string;
+  scopes: string[];
+  permissions?: Record<string, unknown> | null;
+  checkedAt: string;
+};
+
 export type IntegrationProviderStatus = {
   provider: string;
   connected: boolean;
   connection?: IntegrationConnection | null;
   capabilities: ProviderCapabilityReadiness[];
+  permissionSummary?: IntegrationPermissionSummary | null;
   checkedAt: string;
 };
 
@@ -63,6 +71,8 @@ export type GetIntegrationProviderStatusResponse = {
   provider: IntegrationProviderStatus;
   correlationId: string;
 };
+
+export type TestIntegrationConnectionResponse = GetIntegrationProviderStatusResponse;
 
 export type ConnectGitHubIntegrationRequest = {
   accountLabel?: string;

@@ -10,6 +10,7 @@ import {
   reconnectIntegration,
   rotateGitHubCredential,
   startGitHubOAuth,
+  testIntegrationConnection,
 } from "../api/integrations-api";
 import type {
   ConnectGitHubIntegrationRequest,
@@ -99,6 +100,17 @@ export function useRotateGitHubCredential() {
     mutationFn: (request: RotateGitHubCredentialRequest) => rotateGitHubCredential(request),
     onSuccess: async () => {
       await invalidateIntegrationState(queryClient, "github");
+    },
+  });
+}
+
+export function useTestIntegrationConnection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (provider: string) => testIntegrationConnection(provider),
+    onSuccess: async (response) => {
+      await invalidateIntegrationState(queryClient, response.provider.provider);
     },
   });
 }

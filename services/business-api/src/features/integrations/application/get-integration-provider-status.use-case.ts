@@ -25,6 +25,13 @@ export class GetIntegrationProviderStatusUseCase {
         input.founderSession.founderId,
       ),
     ]);
+    const permissionSummary =
+      input.provider === "github"
+        ? await this.connectionRepository.getPermissionSummary(
+            input.founderSession.founderId,
+            "github",
+          )
+        : undefined;
     const connection = connections.find((item) => item.provider === input.provider) ?? null;
     const providerReadiness = readiness.filter((item) => item.provider === input.provider);
     const status: IntegrationProviderStatus = {
@@ -37,6 +44,10 @@ export class GetIntegrationProviderStatusUseCase {
         reason: item.status === "not_ready" ? item.reason : undefined,
         checkedAt: item.checkedAt,
       })),
+      permissionSummary:
+        permissionSummary && permissionSummary.provider === input.provider
+          ? permissionSummary
+          : null,
       checkedAt: new Date().toISOString(),
     };
 

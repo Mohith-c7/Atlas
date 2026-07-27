@@ -67,6 +67,12 @@ export type McpResolvedCredentials = {
   readonly credentialPayload: unknown;
 };
 
+export type McpCredentialUnavailableReason = {
+  readonly errorCode: string;
+  readonly errorMessage: string;
+  readonly retrySafety: McpAdapterRetrySafety;
+};
+
 export type McpAdapterReadiness =
   | {
       readonly status: "ready";
@@ -86,6 +92,9 @@ export interface McpCredentialResolver {
   resolveCredentials(
     request: McpCredentialResolutionRequest,
   ): Promise<McpResolvedCredentials | undefined>;
+  getCredentialUnavailableReason?(
+    request: McpCredentialResolutionRequest,
+  ): Promise<McpCredentialUnavailableReason | undefined>;
 }
 
 export interface McpAdapter {
@@ -213,6 +222,20 @@ export class GitHubCreateIssueAdapter implements McpAdapter {
     });
 
     if (!credentials) {
+      const unavailableReason = await this.credentialResolver.getCredentialUnavailableReason?.({
+        founderId: request.founderId,
+        provider: this.provider,
+        capabilityKey: this.capabilityKey,
+      });
+
+      if (unavailableReason) {
+        return this.failure(
+          unavailableReason.errorCode,
+          unavailableReason.errorMessage,
+          unavailableReason.retrySafety,
+        );
+      }
+
       return this.failure(
         "MCP_CREDENTIALS_NOT_FOUND",
         "GitHub credentials are not connected for this founder.",
@@ -313,11 +336,19 @@ export class GitHubCreateIssueAdapter implements McpAdapter {
     });
 
     if (!credentials) {
+      const unavailableReason = await this.credentialResolver.getCredentialUnavailableReason?.({
+        founderId,
+        provider: this.provider,
+        capabilityKey: this.capabilityKey,
+      });
+
       return {
         status: "not_ready",
         provider: this.provider,
         capabilityKey: this.capabilityKey,
-        reason: "GitHub credentials are not connected for this founder.",
+        reason:
+          unavailableReason?.errorMessage ??
+          "GitHub credentials are not connected for this founder.",
         checkedAt,
       };
     }

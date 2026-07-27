@@ -13,6 +13,7 @@ import {
   type RotateIntegrationCredentialResponse,
   type StartGitHubOAuthRequest,
   type StartGitHubOAuthResponse,
+  type TestIntegrationConnectionResponse,
 } from "../types/integration";
 import { apiFetch } from "../../../lib/api-client";
 import { businessApiUrl } from "../../../lib/config";
@@ -202,6 +203,24 @@ export async function getIntegrationProviderStatus(
   }
 
   return payload as GetIntegrationProviderStatusResponse;
+}
+
+export async function testIntegrationConnection(
+  provider: string,
+): Promise<TestIntegrationConnectionResponse> {
+  const response = await apiFetch(
+    `${businessApiUrl}/api/v1/integrations/${encodeURIComponent(provider)}/health-check`,
+    {
+      method: "POST",
+    },
+  );
+  const payload = await readJson(response);
+
+  if (!response.ok) {
+    throwIntegrationError(payload, response.status, "Unable to test integration connection.");
+  }
+
+  return payload as TestIntegrationConnectionResponse;
 }
 
 export async function connectGitHubIntegration(

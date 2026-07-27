@@ -20,6 +20,11 @@ type ConnectionResponse = {
 type ProviderStatusResponse = {
   readonly provider?: {
     readonly connected?: boolean;
+    readonly permissionSummary?: {
+      readonly provider?: string;
+      readonly scopes?: readonly string[];
+      readonly checkedAt?: string;
+    } | null;
     readonly capabilities?: readonly {
       readonly capabilityKey?: string;
       readonly status?: string;
@@ -30,6 +35,11 @@ type ProviderStatusResponse = {
 
 type RotationResponse = ConnectionResponse & {
   readonly rotatedAt?: string;
+};
+
+type RefreshResponse = ConnectionResponse & {
+  readonly refreshed?: boolean;
+  readonly reason?: string;
 };
 
 function expectStatus(response: ConnectionResponse, status: string) {
@@ -169,6 +179,58 @@ async function main() {
     const reconnected: ConnectionResponse = reconnectResponse.json();
     expectStatus(reconnected, "connected");
 
+    const healthCheckResponse = await server.inject({
+      method: "POST",
+      url: "/api/v1/integrations/github/health-check",
+      headers: {
+        authorization: `Bearer ${rawToken}`,
+      },
+    });
+
+    if (healthCheckResponse.statusCode !== 200) {
+      throw new Error(`Expected health check 200, received ${healthCheckResponse.statusCode}.`);
+    }
+
+    const healthCheck: ProviderStatusResponse = healthCheckResponse.json();
+
+    if (
+      healthCheck.provider?.connected !== true ||
+      !healthCheck.provider.permissionSummary?.scopes?.includes("repository.createIssue")
+    ) {
+      throw new Error("Expected health check to persist a GitHub permission summary.");
+    }
+
+    const statusAfterHealthCheckResponse = await server.inject({
+      method: "GET",
+      url: "/api/v1/integrations/providers/github/status",
+      headers: {
+        authorization: `Bearer ${rawToken}`,
+      },
+    });
+    const statusAfterHealthCheck: ProviderStatusResponse = statusAfterHealthCheckResponse.json();
+
+    if (!statusAfterHealthCheck.provider?.permissionSummary?.checkedAt) {
+      throw new Error("Expected provider status to include persisted permission summary.");
+    }
+
+    const refreshResponse = await server.inject({
+      method: "POST",
+      url: "/api/v1/integrations/github/credentials/refresh",
+      headers: {
+        authorization: `Bearer ${rawToken}`,
+      },
+    });
+
+    if (refreshResponse.statusCode !== 200) {
+      throw new Error(`Expected credential refresh 200, received ${refreshResponse.statusCode}.`);
+    }
+
+    const refresh: RefreshResponse = refreshResponse.json();
+
+    if (refresh.refreshed !== false || refresh.reason !== "manual_token_rotation_required") {
+      throw new Error("Expected manual GitHub token refresh to require rotation.");
+    }
+
     const rotatedToken = `ghp_lifecycle_rotated_${suffix}`;
     const rotateResponse = await server.inject({
       method: "POST",
@@ -210,6 +272,7 @@ async function main() {
       },
       include: {
         credential: true,
+        permissionSummary: true,
       },
     });
 
@@ -219,6 +282,14 @@ async function main() {
 
     if (storedConnection.credential.rotationReason !== "scheduled rotation") {
       throw new Error("Expected credential rotation reason to be persisted.");
+    }
+
+    if (!storedConnection.lastHealthCheckedAt || !storedConnection.permissionSummary) {
+      throw new Error("Expected health and permission summary state to be persisted.");
+    }
+
+    if (storedConnection.credential.refreshFailureReason !== "manual_token_rotation_required") {
+      throw new Error("Expected manual refresh attempt metadata to be persisted.");
     }
 
     const lifecycleEvents = await database.integrationLifecycleEvent.findMany({
@@ -232,7 +303,15 @@ async function main() {
     });
     const eventTypes = lifecycleEvents.map((event) => event.eventType);
 
-    for (const eventType of ["connected", "disconnected", "reconnected", "credential_rotated"]) {
+    for (const eventType of [
+      "connected",
+      "disconnected",
+      "reconnected",
+      "health_checked",
+      "permission_checked",
+      "credential_refresh_attempted",
+      "credential_rotated",
+    ]) {
       if (!eventTypes.includes(eventType)) {
         throw new Error(`Expected lifecycle event ${eventType}.`);
       }
