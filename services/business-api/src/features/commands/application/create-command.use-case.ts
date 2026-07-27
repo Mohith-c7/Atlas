@@ -2,10 +2,13 @@ import type { CreateCommandRequest, CreateCommandResponse } from "@faios/contrac
 import type { PrismaClient } from "@faios/database";
 import { AppError } from "../../../lib/errors.js";
 import type { FounderSession } from "../../../lib/founder-session.js";
+import { extractMemoryCandidates, MemoryRepository } from "../../memory/index.js";
 import { CapabilityRegistry } from "../../mcp-capabilities/index.js";
 import { AiOrchestratorClient } from "../infrastructure/ai-orchestrator.client.js";
 import { CommandRepository } from "../infrastructure/command.repository.js";
 import { resolveFounderAccount } from "../infrastructure/founder-resolver.js";
+
+const MEMORY_CONTEXT_LIMIT = 8;
 
 type CreateCommandUseCaseInput = {
   request: CreateCommandRequest;
@@ -15,11 +18,13 @@ type CreateCommandUseCaseInput = {
 
 export class CreateCommandUseCase {
   private readonly repository: CommandRepository;
+  private readonly memoryRepository: MemoryRepository;
   private readonly aiOrchestrator: AiOrchestratorClient;
   private readonly capabilityRegistry: CapabilityRegistry;
 
   public constructor(private readonly database: PrismaClient) {
     this.repository = new CommandRepository(database);
+    this.memoryRepository = new MemoryRepository(database);
     this.aiOrchestrator = new AiOrchestratorClient();
     this.capabilityRegistry = new CapabilityRegistry();
   }
@@ -35,6 +40,28 @@ export class CreateCommandUseCase {
     });
 
     try {
+      const memoryCandidates = extractMemoryCandidates(input.request.input);
+
+      await Promise.all(
+        memoryCandidates.map((candidate) =>
+          this.memoryRepository.createMemoryItem({
+            founderId: founder.id,
+            kind: candidate.kind,
+            content: candidate.content,
+            source: candidate.source,
+            confidence: candidate.confidence,
+            metadata: {
+              commandId: record.command.id,
+              correlationId: input.correlationId,
+            },
+          }),
+        ),
+      );
+
+      const memoryContext = await this.memoryRepository.listRecentMemoryContext(
+        founder.id,
+        MEMORY_CONTEXT_LIMIT,
+      );
       const availableCapabilities = this.capabilityRegistry.listAvailableCapabilities();
       const plan = await this.aiOrchestrator.planCommand({
         commandId: record.command.id,
@@ -44,6 +71,7 @@ export class CreateCommandUseCase {
         input: input.request.input,
         correlationId: input.correlationId,
         availableCapabilities,
+        memoryContext,
       });
 
       await this.repository.storePlan({

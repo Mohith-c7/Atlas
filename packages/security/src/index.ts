@@ -5,6 +5,12 @@ const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH_BYTES = 12;
 const AUTH_TAG_LENGTH_BYTES = 16;
 const KEY_LENGTH_BYTES = 32;
+const SENSITIVE_TEXT_PATTERNS: readonly RegExp[] = [
+  /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,
+  /\b(?:ghp|gho|ghu|ghs|github_pat)_[A-Za-z0-9_]{12,}\b/g,
+  /\b(?:sk|xoxb|xoxp|xapp)-[A-Za-z0-9-]{12,}\b/g,
+  /\b(?:password|secret|token|api[_ -]?key)\s*[:=]\s*\S+/gi,
+];
 
 export const encryptedJsonPayloadSchema = z.object({
   algorithm: z.literal(ALGORITHM),
@@ -81,4 +87,11 @@ export function createEncryptionKeyFromEnvironment(): EncryptionKey {
   }
 
   return parseBase64EncryptionKey(keyVersion, encodedKey);
+}
+
+export function redactSensitiveText(value: string): string {
+  return SENSITIVE_TEXT_PATTERNS.reduce(
+    (redacted, pattern) => redacted.replace(pattern, "[REDACTED]"),
+    value,
+  );
 }

@@ -20,6 +20,7 @@ class PlanRequest(CamelModel):
     available_capabilities: list["AvailableCapability"] = Field(
         default_factory=list, alias="availableCapabilities"
     )
+    memory_context: list["MemoryContextItem"] = Field(default_factory=list, alias="memoryContext")
 
 
 class PlanStep(CamelModel):
@@ -47,3 +48,20 @@ class AvailableCapability(CamelModel):
     description: NonEmptyString
     requires_approval: bool = Field(alias="requiresApproval")
     status: Literal["available", "not_connected", "disabled"]
+
+
+class MemoryContextItem(CamelModel):
+    id: NonEmptyString
+    kind: Literal[
+        "founder_profile",
+        "company_fact",
+        "preference",
+        "decision",
+        "contact",
+        "workflow_pattern",
+        "summary",
+    ]
+    content: NonEmptyString
+    source: str | None = None
+    confidence: float | None = None
+    created_at: NonEmptyString = Field(alias="createdAt")

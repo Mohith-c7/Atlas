@@ -28,6 +28,16 @@ export const integrationProviderSchema = z.enum(["github"]);
 
 export const integrationConnectionStatusSchema = z.enum(["connected", "disconnected", "disabled"]);
 
+export const memoryKindSchema = z.enum([
+  "founder_profile",
+  "company_fact",
+  "preference",
+  "decision",
+  "contact",
+  "workflow_pattern",
+  "summary",
+]);
+
 export const mcpCapabilitySchema = z.object({
   key: z.string().min(1),
   provider: z.string().min(1),
@@ -103,6 +113,15 @@ export const createCommandRequestSchema = z.object({
   input: z.string().min(1).max(8000),
 });
 
+export const memoryContextItemSchema = z.object({
+  id: z.string(),
+  kind: memoryKindSchema,
+  content: z.string().min(1),
+  source: z.string().nullable().optional(),
+  confidence: z.number().min(0).max(1).nullable().optional(),
+  createdAt: z.string(),
+});
+
 export const planCommandRequestSchema = z.object({
   commandId: z.string().min(1),
   founderId: z.string(),
@@ -111,6 +130,7 @@ export const planCommandRequestSchema = z.object({
   input: z.string().min(1),
   correlationId: z.string(),
   availableCapabilities: z.array(mcpCapabilitySchema).default([]),
+  memoryContext: z.array(memoryContextItemSchema).default([]),
 });
 
 export const githubCreateIssueExecutionPayloadSchema = z.object({
@@ -276,6 +296,8 @@ export type ListIntegrationConnectionsResponse = z.infer<
   typeof listIntegrationConnectionsResponseSchema
 >;
 export type ListApprovalsResponse = z.infer<typeof listApprovalsResponseSchema>;
+export type MemoryContextItem = z.infer<typeof memoryContextItemSchema>;
+export type MemoryKind = z.infer<typeof memoryKindSchema>;
 export type McpCapability = z.infer<typeof mcpCapabilitySchema>;
 export type McpCapabilityStatus = z.infer<typeof mcpCapabilityStatusSchema>;
 export type Pagination = z.infer<typeof paginationSchema>;
