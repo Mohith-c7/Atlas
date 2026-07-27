@@ -382,6 +382,40 @@ export const memoryContextItemSchema = z.object({
   createdAt: z.string(),
 });
 
+export const memoryItemSchema = memoryContextItemSchema.extend({
+  updatedAt: z.string(),
+});
+
+export const listMemoryItemsResponseSchema = z.object({
+  memories: z.array(memoryItemSchema),
+  correlationId: z.string(),
+});
+
+export const updateMemoryItemRequestSchema = z
+  .object({
+    kind: memoryKindSchema.optional(),
+    content: z.string().trim().min(1).max(4000).optional(),
+  })
+  .refine((input) => input.kind !== undefined || input.content !== undefined, {
+    message: "At least one memory field must be provided.",
+  });
+
+export const updateMemoryItemResponseSchema = z.object({
+  memory: memoryItemSchema,
+  correlationId: z.string(),
+});
+
+export const deleteMemoryItemResponseSchema = z.object({
+  deletedMemoryId: z.string(),
+  correlationId: z.string(),
+});
+
+export const exportMemoryItemsResponseSchema = z.object({
+  memories: z.array(memoryItemSchema),
+  exportedAt: z.string(),
+  correlationId: z.string(),
+});
+
 export const planCommandRequestSchema = z.object({
   commandId: z.string().min(1),
   founderId: z.string(),
@@ -575,6 +609,7 @@ export type CreateBillingPortalSessionResponse = z.infer<
   typeof createBillingPortalSessionResponseSchema
 >;
 export type ListFounderSessionsResponse = z.infer<typeof listFounderSessionsResponseSchema>;
+export type ListMemoryItemsResponse = z.infer<typeof listMemoryItemsResponseSchema>;
 export type PlanEntitlement = z.infer<typeof planEntitlementSchema>;
 export type RevokeFounderSessionResponse = z.infer<typeof revokeFounderSessionResponseSchema>;
 export type UpdateFounderAccountRequest = z.infer<typeof updateFounderAccountRequestSchema>;
@@ -625,7 +660,12 @@ export type RotateIntegrationCredentialResponse = z.infer<
 >;
 export type ListApprovalsResponse = z.infer<typeof listApprovalsResponseSchema>;
 export type MemoryContextItem = z.infer<typeof memoryContextItemSchema>;
+export type MemoryItem = z.infer<typeof memoryItemSchema>;
 export type MemoryKind = z.infer<typeof memoryKindSchema>;
+export type UpdateMemoryItemRequest = z.infer<typeof updateMemoryItemRequestSchema>;
+export type UpdateMemoryItemResponse = z.infer<typeof updateMemoryItemResponseSchema>;
+export type DeleteMemoryItemResponse = z.infer<typeof deleteMemoryItemResponseSchema>;
+export type ExportMemoryItemsResponse = z.infer<typeof exportMemoryItemsResponseSchema>;
 export type McpCapability = z.infer<typeof mcpCapabilitySchema>;
 export type McpCapabilityStatus = z.infer<typeof mcpCapabilityStatusSchema>;
 export type Pagination = z.infer<typeof paginationSchema>;

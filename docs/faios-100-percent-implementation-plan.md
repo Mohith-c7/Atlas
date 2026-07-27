@@ -762,6 +762,30 @@ M12.1 adds browser voice capture hardening for the founder command surface.
 - `pnpm test`
 - `pnpm build`
 
+## Twelfth Next Implementation Slice
+
+M13.1 adds founder-facing memory management with founder-scoped backend boundaries.
+
+### M13.1 Checklist
+
+- [x] Add shared contracts for memory list, update, delete, and export.
+- [x] Add backend use cases for founder-scoped memory management.
+- [x] Add safe repository projections that exclude vector refs and raw metadata.
+- [x] Redact sensitive content before founder edits are stored.
+- [x] Register memory management routes in the Business API.
+- [x] Add web API client and React Query hooks.
+- [x] Add founder memory management panel for list/edit/delete/export.
+- [x] Add runtime integration coverage for founder isolation, redaction, export, and delete.
+
+### M13.1 Completion Gate
+
+- `pnpm format:check`
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm test`
+- `pnpm build`
+- `pnpm --filter @faios/business-api test:integration`
+
 ## Out Of Scope For V1
 
 - Team workspaces.

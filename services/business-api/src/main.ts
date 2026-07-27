@@ -8,6 +8,7 @@ import { billingRoutes } from "./features/billing/index.js";
 import { commandRoutes } from "./features/commands/index.js";
 import { healthRoutes } from "./features/health/index.js";
 import { integrationRoutes } from "./features/integrations/index.js";
+import { memoryRoutes } from "./features/memory/index.js";
 import { mcpCapabilityRoutes } from "./features/mcp-capabilities/index.js";
 import { correlationPlugin } from "./lib/correlation.js";
 import { founderSessionPlugin } from "./lib/founder-session.js";
@@ -26,6 +27,7 @@ await server.register(accountRoutes);
 await server.register(billingRoutes);
 await server.register(approvalRoutes);
 await server.register(integrationRoutes);
+await server.register(memoryRoutes);
 await server.register(mcpCapabilityRoutes);
 await server.register(commandRoutes);
 
