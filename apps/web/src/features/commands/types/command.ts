@@ -13,6 +13,7 @@ export type CommandPlanStep = {
   provider?: string;
   requiresApproval: boolean;
   reason: string;
+  executionPayload?: unknown;
 };
 
 export type CreateCommandResponse = {

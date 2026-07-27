@@ -23,6 +23,43 @@ function formatStatus(status: CreateCommandResponse["status"]) {
   return status.replace("_", " ");
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object";
+}
+
+function GitHubIssuePayloadPreview({ payload }: Readonly<{ payload: unknown }>) {
+  if (!isRecord(payload) || typeof payload.title !== "string") {
+    return null;
+  }
+
+  const labels = Array.isArray(payload.labels)
+    ? payload.labels.filter((label): label is string => typeof label === "string")
+    : [];
+
+  return (
+    <div className="mt-3 rounded-md border border-border bg-white p-3 text-xs text-muted">
+      <p className="font-medium text-foreground">{payload.title}</p>
+      {typeof payload.body === "string" ? (
+        <p className="mt-2 max-h-16 overflow-hidden whitespace-pre-line leading-5">
+          {payload.body}
+        </p>
+      ) : null}
+      {labels.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {labels.map((label) => (
+            <span
+              className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
+              key={label}
+            >
+              {label}
+            </span>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function CommandResult({ result }: Readonly<{ result: CreateCommandResponse }>) {
   return (
     <section className="rounded-lg border border-border bg-white p-5 shadow-sm">
@@ -64,6 +101,9 @@ function CommandResult({ result }: Readonly<{ result: CreateCommandResponse }>) 
               ) : null}
             </div>
             <p className="mt-3 text-sm leading-6 text-muted">{step.reason}</p>
+            {step.capability === "repository.createIssue" ? (
+              <GitHubIssuePayloadPreview payload={step.executionPayload} />
+            ) : null}
           </article>
         ))}
       </div>

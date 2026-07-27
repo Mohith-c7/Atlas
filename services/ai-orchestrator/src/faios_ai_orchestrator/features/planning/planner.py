@@ -35,7 +35,7 @@ def create_mock_plan(request: PlanRequest) -> PlanResponse:
 
     requires_approval = _requires_approval(lowered_text, capabilities)
 
-    steps = _build_steps(capabilities, requires_approval)
+    steps = _build_steps(capabilities, requires_approval, normalized_text, lowered_text)
     return PlanResponse(
         command_id=request.command_id,
         status="awaiting_approval" if requires_approval else "completed",
@@ -90,7 +90,10 @@ def _build_summary(capabilities: list[AvailableCapability]) -> str:
 
 
 def _build_steps(
-    capabilities: list[AvailableCapability], requires_approval: bool
+    capabilities: list[AvailableCapability],
+    requires_approval: bool,
+    normalized_text: str,
+    lowered_text: str,
 ) -> list[PlanStep]:
     steps = []
     for capability in capabilities:
@@ -100,7 +103,77 @@ def _build_steps(
                 provider=capability.provider,
                 requires_approval=requires_approval or capability.requires_approval,
                 reason="This phase plans the MCP capability without executing external tools.",
+                execution_payload=_build_execution_payload(
+                    capability.key, normalized_text, lowered_text
+                ),
             )
         )
 
     return steps
+
+
+def _build_execution_payload(
+    capability_key: str, normalized_text: str, lowered_text: str
+) -> dict[str, object] | None:
+    if capability_key != "repository.createIssue":
+        return None
+
+    title = _build_github_issue_title(normalized_text)
+    labels = _build_github_issue_labels(lowered_text)
+
+    payload: dict[str, object] = {
+        "title": title,
+        "body": (
+            "Created from founder command:\n\n"
+            f"{normalized_text}\n\n"
+            "Review the issue details before assigning or linking it to a project."
+        ),
+    }
+
+    if labels:
+        payload["labels"] = labels
+
+    return payload
+
+
+def _build_github_issue_title(normalized_text: str) -> str:
+    title = normalized_text
+
+    prefixes = (
+        "create a github issue for",
+        "create github issue for",
+        "create an issue for",
+        "create issue for",
+        "open a github issue for",
+        "open github issue for",
+        "open an issue for",
+        "open issue for",
+    )
+    lowered_title = title.lower()
+
+    for prefix in prefixes:
+        if lowered_title.startswith(prefix):
+            title = title[len(prefix) :].strip(" .:-")
+            break
+
+    if not title:
+        title = normalized_text
+
+    return title[:256]
+
+
+def _build_github_issue_labels(lowered_text: str) -> list[str]:
+    labels = []
+    keyword_labels = (
+        (("bug", "broken", "error", "fix"), "bug"),
+        (("onboarding", "activation"), "onboarding"),
+        (("docs", "documentation", "readme"), "documentation"),
+        (("integration", "mcp", "provider"), "integration"),
+        (("product", "ux", "ui"), "product"),
+    )
+
+    for keywords, label in keyword_labels:
+        if any(keyword in lowered_text for keyword in keywords):
+            labels.append(label)
+
+    return labels

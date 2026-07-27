@@ -27,6 +27,38 @@ const isApprovalPayload = (value: unknown): value is NonNullable<ApprovalContrac
 type ApprovalRecord = Awaited<ReturnType<PrismaClient["approvalRequest"]["findMany"]>>[number];
 type ApprovalTransaction = Prisma.TransactionClient;
 
+const buildFallbackInvocationPayload = (
+  step: { capability: string; provider?: string; requiresApproval: boolean; reason: string },
+  commandSummary: string | null,
+  planId: string | undefined,
+): Prisma.InputJsonValue =>
+  redactSensitivePayload({
+    capability: step.capability,
+    provider: step.provider,
+    reason: step.reason,
+    requiresApproval: step.requiresApproval,
+    commandSummary,
+    planId,
+  }) as Prisma.InputJsonValue;
+
+const buildInvocationRequestPayload = (
+  step: {
+    capability: string;
+    provider?: string;
+    requiresApproval: boolean;
+    reason: string;
+    executionPayload?: unknown;
+  },
+  commandSummary: string | null,
+  planId: string | undefined,
+): Prisma.InputJsonValue => {
+  if (step.executionPayload !== undefined) {
+    return redactSensitivePayload(step.executionPayload) as Prisma.InputJsonValue;
+  }
+
+  return buildFallbackInvocationPayload(step, commandSummary, planId);
+};
+
 const toApprovalContract = (approval: ApprovalRecord): ApprovalContract => ({
   id: approval.id,
   commandId: approval.commandId,
@@ -182,14 +214,7 @@ export class ApprovalRepository {
             provider: step.provider ?? null,
             status: "PENDING",
             maxRetries: 3,
-            requestPayload: redactSensitivePayload({
-              capability: step.capability,
-              provider: step.provider,
-              reason: step.reason,
-              requiresApproval: step.requiresApproval,
-              commandSummary: command.summary,
-              planId: command.plan?.id,
-            }) as Prisma.InputJsonValue,
+            requestPayload: buildInvocationRequestPayload(step, command.summary, command.plan?.id),
           },
         }),
       ),

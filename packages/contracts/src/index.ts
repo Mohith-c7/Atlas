@@ -93,11 +93,18 @@ export const planCommandRequestSchema = z.object({
   availableCapabilities: z.array(mcpCapabilitySchema).default([]),
 });
 
+export const githubCreateIssueExecutionPayloadSchema = z.object({
+  title: z.string().min(1).max(256),
+  body: z.string().max(65536).optional(),
+  labels: z.array(z.string().min(1)).max(20).optional(),
+});
+
 export const executionStepSchema = z.object({
   capability: z.string(),
   provider: z.string().optional(),
   requiresApproval: z.boolean().default(false),
   reason: z.string(),
+  executionPayload: z.unknown().optional(),
 });
 
 export const executionPlanSchema = z.object({
@@ -130,6 +137,7 @@ export const approvalRequestSchema = z.object({
       provider: z.string().optional(),
       reason: z.string(),
       commandSummary: z.string().optional(),
+      executionPayload: z.unknown().optional(),
     })
     .passthrough()
     .optional(),
@@ -232,6 +240,9 @@ export type ExecutionJob = z.infer<typeof executionJobSchema>;
 export type ExecutionDispatchMessage = z.infer<typeof executionDispatchMessageSchema>;
 export type GitHubIntegrationConnectionRequest = z.infer<
   typeof githubIntegrationConnectionRequestSchema
+>;
+export type GitHubCreateIssueExecutionPayload = z.infer<
+  typeof githubCreateIssueExecutionPayloadSchema
 >;
 export type IntegrationConnection = z.infer<typeof integrationConnectionSchema>;
 export type IntegrationConnectionStatus = z.infer<typeof integrationConnectionStatusSchema>;

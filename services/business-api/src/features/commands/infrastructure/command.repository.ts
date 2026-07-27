@@ -1,5 +1,5 @@
 import type { CommandStatus, CommandSource, ExecutionStep } from "@faios/contracts";
-import type { PrismaClient } from "@faios/database";
+import type { Prisma, PrismaClient } from "@faios/database";
 import { toPrismaCommandStatus } from "../domain/command-status.js";
 
 type CreateCommandRecordInput = {
@@ -82,7 +82,7 @@ export class CommandRepository {
         data: {
           commandId: input.commandId,
           summary: input.summary,
-          steps: input.steps,
+          steps: input.steps as Prisma.InputJsonValue,
         },
       });
 
@@ -97,6 +97,9 @@ export class CommandRepository {
               provider: step.provider,
               reason: step.reason,
               commandSummary: input.summary,
+              ...(step.executionPayload === undefined
+                ? {}
+                : { executionPayload: step.executionPayload }),
             },
           })),
         });

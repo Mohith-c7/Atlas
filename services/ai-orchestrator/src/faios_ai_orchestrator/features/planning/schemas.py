@@ -27,6 +27,7 @@ class PlanStep(CamelModel):
     provider: str | None = None
     requires_approval: bool = Field(alias="requiresApproval")
     reason: NonEmptyString
+    execution_payload: dict[str, object] | None = Field(default=None, alias="executionPayload")
 
 
 class PlanResponse(CamelModel):
