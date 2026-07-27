@@ -658,6 +658,34 @@ M10.3 adds provider health snapshots, permission summaries, and credential refre
 - `pnpm --filter @faios/business-api test:integration`
 - `pnpm --filter @faios/workers test:integration`
 
+## Eighth Next Implementation Slice
+
+M10.4 completes founder-facing GitHub OAuth result handling and hardens callback safety.
+
+### M10.4 Checklist
+
+- [x] Add web GitHub OAuth callback route.
+- [x] Add GitHub OAuth success page.
+- [x] Add GitHub OAuth error page.
+- [x] Default GitHub OAuth redirect URI to the web callback.
+- [x] Add web OAuth completion client boundary.
+- [x] Add backend POST OAuth completion API route.
+- [x] Keep existing GET OAuth callback route for compatibility.
+- [x] Harden OAuth token exchange against non-JSON provider responses.
+- [x] Add OAuth replay regression coverage.
+- [x] Add wrong-founder OAuth state regression coverage.
+- [x] Add expired-state OAuth regression coverage.
+- [x] Add malformed token response regression coverage.
+
+### M10.4 Completion Gate
+
+- `pnpm format:check`
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm test`
+- `pnpm build`
+- `pnpm --filter @faios/business-api test:integration`
+
 ## Out Of Scope For V1
 
 - Team workspaces.

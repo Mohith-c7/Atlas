@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { getPrismaClient } from "@faios/database";
 import { encryptedJsonPayloadSchema } from "@faios/security";
+import { AppError } from "../lib/errors.js";
 import type { FounderSession } from "../lib/founder-session.js";
 import { CompleteGitHubOAuthUseCase } from "../features/integrations/application/complete-github-oauth.use-case.js";
 import { StartGitHubOAuthUseCase } from "../features/integrations/application/start-github-oauth.use-case.js";
@@ -17,7 +18,10 @@ function readBody(request: IncomingMessage): Promise<string> {
   });
 }
 
-async function startOAuthTokenServer(expectedToken: string): Promise<{
+async function startOAuthTokenServer(input: {
+  readonly expectedToken: string;
+  readonly invalidJson?: boolean;
+}): Promise<{
   readonly baseUrl: string;
   readonly close: () => Promise<void>;
   readonly requests: readonly Record<string, unknown>[];
@@ -37,9 +41,15 @@ async function startOAuthTokenServer(expectedToken: string): Promise<{
       response.writeHead(200, {
         "content-type": "application/json",
       });
+
+      if (input.invalidJson) {
+        response.end("not-json");
+        return;
+      }
+
       response.end(
         JSON.stringify({
-          access_token: expectedToken,
+          access_token: input.expectedToken,
           scope: "repo",
           token_type: "bearer",
         }),
@@ -78,7 +88,9 @@ async function main() {
   const suffix = Date.now().toString(36);
   const founderId = `github_oauth_${suffix}`;
   const token = `gho_oauth_${suffix}`;
-  const tokenServer = await startOAuthTokenServer(token);
+  const tokenServer = await startOAuthTokenServer({
+    expectedToken: token,
+  });
   const founderSession: FounderSession = {
     founderId,
     email: `${founderId}@faios.local`,
@@ -175,6 +187,112 @@ async function main() {
     if (tokenServer.requests.length !== 1) {
       throw new Error(`Expected one OAuth token request, received ${tokenServer.requests.length}.`);
     }
+
+    await expectAppError(
+      () =>
+        new CompleteGitHubOAuthUseCase(database).execute(
+          {
+            code: "oauth-code-replay",
+            state: startResponse.state,
+          },
+          `corr_replay_${suffix}`,
+          founderSession,
+        ),
+      "GITHUB_OAUTH_STATE_INVALID",
+    );
+
+    const wrongFounderStart = await new StartGitHubOAuthUseCase(database).execute(
+      {
+        accountLabel: "Wrong Founder GitHub",
+        owner: "faios",
+        repo: "atlas",
+        redirectUri: "http://localhost:3000/integrations/github/oauth/callback",
+        apiBaseUrl: "https://api.github.com",
+      },
+      `corr_wrong_founder_start_${suffix}`,
+      founderSession,
+    );
+
+    await expectAppError(
+      () =>
+        new CompleteGitHubOAuthUseCase(database).execute(
+          {
+            code: "oauth-code-wrong-founder",
+            state: wrongFounderStart.state,
+          },
+          `corr_wrong_founder_complete_${suffix}`,
+          {
+            founderId: `${founderId}_other`,
+            email: `${founderId}_other@faios.local`,
+            displayName: "Other Founder",
+            source: "development",
+          },
+        ),
+      "GITHUB_OAUTH_STATE_INVALID",
+    );
+
+    await database.integrationOAuthState.create({
+      data: {
+        founderId,
+        provider: "github",
+        state: `expired_${suffix}`,
+        redirectUri: "http://localhost:3000/integrations/github/oauth/callback",
+        metadata: {
+          owner: "faios",
+          repo: "atlas",
+          apiBaseUrl: "https://api.github.com",
+        },
+        expiresAt: new Date(Date.now() - 60_000),
+      },
+    });
+
+    await expectAppError(
+      () =>
+        new CompleteGitHubOAuthUseCase(database).execute(
+          {
+            code: "oauth-code-expired",
+            state: `expired_${suffix}`,
+          },
+          `corr_expired_${suffix}`,
+          founderSession,
+        ),
+      "GITHUB_OAUTH_STATE_INVALID",
+    );
+
+    const invalidJsonTokenServer = await startOAuthTokenServer({
+      expectedToken: `unused_${suffix}`,
+      invalidJson: true,
+    });
+
+    try {
+      process.env.GITHUB_OAUTH_TOKEN_URL = `${invalidJsonTokenServer.baseUrl}/login/oauth/access_token`;
+      const invalidJsonStart = await new StartGitHubOAuthUseCase(database).execute(
+        {
+          accountLabel: "Invalid JSON GitHub",
+          owner: "faios",
+          repo: "atlas",
+          redirectUri: "http://localhost:3000/integrations/github/oauth/callback",
+          apiBaseUrl: "https://api.github.com",
+        },
+        `corr_invalid_json_start_${suffix}`,
+        founderSession,
+      );
+
+      await expectAppError(
+        () =>
+          new CompleteGitHubOAuthUseCase(database).execute(
+            {
+              code: "oauth-code-invalid-json",
+              state: invalidJsonStart.state,
+            },
+            `corr_invalid_json_complete_${suffix}`,
+            founderSession,
+          ),
+        "GITHUB_OAUTH_RESPONSE_INVALID",
+      );
+    } finally {
+      await invalidJsonTokenServer.close();
+    }
   } finally {
     await database.founderAccount
       .delete({
@@ -186,6 +304,20 @@ async function main() {
     await tokenServer.close();
     await database.$disconnect();
   }
+}
+
+async function expectAppError(action: () => Promise<unknown>, expectedCode: string): Promise<void> {
+  try {
+    await action();
+  } catch (error) {
+    if (error instanceof AppError && error.code === expectedCode) {
+      return;
+    }
+
+    throw error;
+  }
+
+  throw new Error(`Expected AppError ${expectedCode}.`);
 }
 
 await main();

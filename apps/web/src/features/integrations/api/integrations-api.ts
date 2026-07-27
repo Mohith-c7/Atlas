@@ -1,5 +1,6 @@
 import {
   IntegrationApiError,
+  type CompleteGitHubOAuthResponse,
   type ConnectGitHubIntegrationRequest,
   type ConnectIntegrationResponse,
   type GetIntegrationProviderStatusResponse,
@@ -23,6 +24,7 @@ const INTEGRATION_CATALOG_ENDPOINT = `${businessApiUrl}/api/v1/integrations/cata
 const INTEGRATION_PROVIDERS_ENDPOINT = `${businessApiUrl}/api/v1/integrations/providers`;
 const GITHUB_CONNECTIONS_ENDPOINT = `${businessApiUrl}/api/v1/integrations/github/connections`;
 const GITHUB_CREDENTIAL_ROTATION_ENDPOINT = `${businessApiUrl}/api/v1/integrations/github/credentials/rotate`;
+const GITHUB_OAUTH_COMPLETE_ENDPOINT = `${businessApiUrl}/api/v1/integrations/github/oauth/complete`;
 const GITHUB_OAUTH_START_ENDPOINT = `${businessApiUrl}/api/v1/integrations/github/oauth/start`;
 const connectionStatuses = new Set<IntegrationConnectionStatus>([
   "connected",
@@ -393,5 +395,43 @@ export async function startGitHubOAuth(
     state: payload.state,
     expiresAt: payload.expiresAt,
     correlationId: payload.correlationId,
+  };
+}
+
+export async function completeGitHubOAuth(input: {
+  code: string;
+  state: string;
+}): Promise<CompleteGitHubOAuthResponse> {
+  const query = new URLSearchParams({
+    code: input.code,
+    state: input.state,
+  });
+  const response = await apiFetch(GITHUB_OAUTH_COMPLETE_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(Object.fromEntries(query)),
+  });
+  const payload = await readJson(response);
+
+  if (!response.ok) {
+    throwIntegrationError(payload, response.status, "Unable to complete GitHub OAuth.");
+  }
+
+  const connection = isRecord(payload) ? normalizeConnection(payload.connection) : undefined;
+
+  if (!connection) {
+    throw new IntegrationApiError({
+      code: "GITHUB_OAUTH_RESPONSE_INVALID",
+      message: "GitHub OAuth completion response was invalid.",
+      statusCode: response.status,
+    });
+  }
+
+  return {
+    connection,
+    correlationId:
+      isRecord(payload) && typeof payload.correlationId === "string" ? payload.correlationId : "",
   };
 }

@@ -14,7 +14,7 @@ import {
   useStartGitHubOAuth,
   useTestIntegrationConnection,
 } from "../hooks/use-integration-connections";
-import { githubOAuthCallbackUrl } from "../../../lib/config";
+import { getGitHubOAuthCallbackUrl } from "../api/github-oauth-client";
 
 function formatError(error: Error) {
   if (error instanceof IntegrationApiError) {
@@ -170,7 +170,7 @@ export function GitHubConnectionPanel() {
         accountLabel: accountLabel.trim() || undefined,
         owner: owner.trim(),
         repo: repo.trim(),
-        redirectUri: githubOAuthCallbackUrl,
+        redirectUri: getGitHubOAuthCallbackUrl(),
       },
       {
         onSuccess: (response) => {

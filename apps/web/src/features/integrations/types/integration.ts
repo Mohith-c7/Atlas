@@ -101,6 +101,11 @@ export type StartGitHubOAuthResponse = {
   correlationId: string;
 };
 
+export type CompleteGitHubOAuthResponse = {
+  connection: IntegrationConnection;
+  correlationId: string;
+};
+
 export type ConnectIntegrationResponse = {
   connection: IntegrationConnection;
   correlationId: string;

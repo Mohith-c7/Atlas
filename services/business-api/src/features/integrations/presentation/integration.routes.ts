@@ -1,4 +1,5 @@
 import {
+  completeGitHubOAuthRequestSchema,
   disconnectIntegrationRequestSchema,
   githubIntegrationConnectionRequestSchema,
   integrationProviderSchema,
@@ -406,6 +407,50 @@ export const integrationRoutes: FastifyPluginCallback = (server, _options, done)
           code,
           state,
         },
+        request.correlationId,
+        request.founderSession,
+      );
+
+      request.log.info(
+        {
+          connectionId: response.connection.id,
+          provider: response.connection.provider,
+          correlationId: response.correlationId,
+        },
+        "GitHub OAuth connection completed",
+      );
+
+      return reply.status(200).send(response);
+    } catch (error) {
+      request.log.error(
+        {
+          correlationId: request.correlationId,
+          error,
+        },
+        "Failed to complete GitHub OAuth",
+      );
+
+      return sendError(reply, error, request.correlationId);
+    }
+  });
+
+  server.post("/api/v1/integrations/github/oauth/complete", async (request, reply) => {
+    const parsed = completeGitHubOAuthRequestSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      return reply.status(400).send({
+        code: "VALIDATION_ERROR",
+        message: "Invalid GitHub OAuth completion request.",
+        correlationId: request.correlationId,
+        details: parsed.error.flatten(),
+      });
+    }
+
+    const useCase = new CompleteGitHubOAuthUseCase(getPrismaClient());
+
+    try {
+      const response = await useCase.execute(
+        parsed.data,
         request.correlationId,
         request.founderSession,
       );

@@ -67,7 +67,17 @@ export class GitHubOAuthClient {
       }),
     });
 
-    const payload = (await response.json()) as GitHubOAuthTokenResponse;
+    let payload: GitHubOAuthTokenResponse;
+
+    try {
+      payload = (await response.json()) as GitHubOAuthTokenResponse;
+    } catch {
+      throw new AppError(
+        "GITHUB_OAUTH_RESPONSE_INVALID",
+        "GitHub OAuth token response was not valid JSON.",
+        502,
+      );
+    }
 
     if (!response.ok || payload.error) {
       throw new AppError(

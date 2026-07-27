@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  completeGitHubOAuth,
   connectGitHubIntegration,
   disconnectIntegration,
   getIntegrationProviderStatus,
@@ -118,5 +119,16 @@ export function useTestIntegrationConnection() {
 export function useStartGitHubOAuth() {
   return useMutation({
     mutationFn: (request: StartGitHubOAuthRequest) => startGitHubOAuth(request),
+  });
+}
+
+export function useCompleteGitHubOAuth() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request: { code: string; state: string }) => completeGitHubOAuth(request),
+    onSuccess: async () => {
+      await invalidateIntegrationState(queryClient, "github");
+    },
   });
 }

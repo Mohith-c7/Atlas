@@ -232,6 +232,11 @@ export const startGitHubOAuthResponseSchema = z.object({
   correlationId: z.string(),
 });
 
+export const completeGitHubOAuthRequestSchema = z.object({
+  code: z.string().min(1).max(1024),
+  state: z.string().min(1).max(256),
+});
+
 export const completeGitHubOAuthResponseSchema = z.object({
   connection: z.lazy(() => integrationConnectionSchema),
   correlationId: z.string(),
@@ -583,6 +588,7 @@ export type GitHubIntegrationConnectionRequest = z.infer<
 >;
 export type StartGitHubOAuthRequest = z.infer<typeof startGitHubOAuthRequestSchema>;
 export type StartGitHubOAuthResponse = z.infer<typeof startGitHubOAuthResponseSchema>;
+export type CompleteGitHubOAuthRequest = z.infer<typeof completeGitHubOAuthRequestSchema>;
 export type CompleteGitHubOAuthResponse = z.infer<typeof completeGitHubOAuthResponseSchema>;
 export type GitHubCreateIssueExecutionPayload = z.infer<
   typeof githubCreateIssueExecutionPayloadSchema
