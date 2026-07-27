@@ -1,6 +1,7 @@
 import { CommandComposer, VoiceCommandPanel } from "@/features/commands";
 import { FounderAccountPanel } from "@/features/account";
 import { ApprovalPanel } from "@/features/approvals";
+import { BillingStatusPanel } from "@/features/billing";
 import { ExecutionTimelinePanel } from "@/features/executions";
 import { GitHubConnectionPanel } from "@/features/integrations";
 import { CapabilityReadinessPanel } from "@/features/mcp";
@@ -38,6 +39,7 @@ export default function HomePage() {
 
         <div className="grid gap-5">
           <FounderAccountPanel />
+          <BillingStatusPanel />
           <GitHubConnectionPanel />
           <CapabilityReadinessPanel />
           <VoiceCommandPanel />

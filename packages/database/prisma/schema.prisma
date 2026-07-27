@@ -60,6 +60,15 @@ enum FounderSessionStatus {
   EXPIRED
 }
 
+enum SubscriptionStatus {
+  INCOMPLETE
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+}
+
 model FounderAccount {
   id             String                  @id @default(cuid())
   email          String                  @unique
@@ -68,6 +77,9 @@ model FounderAccount {
   updatedAt      DateTime                @updatedAt
   authIdentities FounderAuthIdentity[]
   sessions       FounderSession[]
+  billingCustomer BillingCustomer?
+  subscriptions   Subscription[]
+  usageCounters   UsageCounter[]
   profile        FounderProfile?
   companyProfile CompanyProfile?
   integrations   IntegrationConnection[]
@@ -75,6 +87,76 @@ model FounderAccount {
   conversations  Conversation[]
   commands       Command[]
   memoryItems    MemoryItem[]
+}
+
+model BillingCustomer {
+  id                 String         @id @default(cuid())
+  founderId          String         @unique
+  founder            FounderAccount @relation(fields: [founderId], references: [id], onDelete: Cascade)
+  provider           String
+  providerCustomerId String         @unique
+  email              String
+  metadata           Json?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  subscriptions      Subscription[]
+
+  @@index([provider, providerCustomerId])
+}
+
+model Subscription {
+  id                     String             @id @default(cuid())
+  founderId              String
+  founder                FounderAccount     @relation(fields: [founderId], references: [id], onDelete: Cascade)
+  billingCustomerId      String?
+  billingCustomer        BillingCustomer?   @relation(fields: [billingCustomerId], references: [id], onDelete: SetNull)
+  provider               String
+  providerSubscriptionId String?            @unique
+  status                 SubscriptionStatus
+  planKey                String
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  cancelAtPeriodEnd      Boolean            @default(false)
+  trialEndsAt            DateTime?
+  metadata               Json?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  @@index([founderId, status])
+  @@index([planKey, status])
+  @@index([provider, providerSubscriptionId])
+}
+
+model PlanEntitlement {
+  id         String   @id @default(cuid())
+  planKey    String
+  featureKey String
+  enabled    Boolean  @default(true)
+  limit      Int?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([planKey, featureKey])
+  @@index([planKey])
+}
+
+model UsageCounter {
+  id          String         @id @default(cuid())
+  founderId   String
+  founder     FounderAccount @relation(fields: [founderId], references: [id], onDelete: Cascade)
+  featureKey  String
+  periodStart DateTime
+  periodEnd   DateTime
+  used        Int            @default(0)
+  limit       Int?
+  source      String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([founderId, featureKey, periodStart, periodEnd])
+  @@index([founderId, featureKey])
+  @@index([periodEnd])
 }
 
 model FounderAuthIdentity {

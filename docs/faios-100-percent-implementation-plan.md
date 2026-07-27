@@ -513,6 +513,33 @@ M9.2 adds founder account/profile management and session lifecycle controls with
 - `pnpm build`
 - `pnpm --filter @faios/business-api test:integration`
 
+## Third Next Implementation Slice
+
+M9.3 adds the billing and entitlement foundation needed before real Stripe checkout and webhook flows.
+
+### M9.3 Checklist
+
+- [x] Add billing customer model.
+- [x] Add subscription model.
+- [x] Add plan entitlement model.
+- [x] Add usage counter model.
+- [x] Add formal Prisma migration.
+- [x] Add shared billing status contracts.
+- [x] Add authenticated billing status API.
+- [x] Add web billing status boundary.
+- [x] Add billing foundation integration tests.
+
+### M9.3 Completion Gate
+
+- `pnpm --filter @faios/database prisma:generate`
+- Prisma migration deploy validation
+- `pnpm format:check`
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm test`
+- `pnpm build`
+- `pnpm --filter @faios/business-api test:integration`
+
 ## Out Of Scope For V1
 
 - Team workspaces.

@@ -112,6 +112,45 @@ export const revokeFounderSessionResponseSchema = z.object({
   correlationId: z.string(),
 });
 
+export const billingSubscriptionStatusSchema = z.enum([
+  "incomplete",
+  "trialing",
+  "active",
+  "past_due",
+  "canceled",
+  "unpaid",
+  "none",
+]);
+
+export const planEntitlementSchema = z.object({
+  planKey: z.string(),
+  featureKey: z.string(),
+  enabled: z.boolean(),
+  limit: z.number().int().nullable().optional(),
+});
+
+export const usageCounterSchema = z.object({
+  featureKey: z.string(),
+  periodStart: z.string(),
+  periodEnd: z.string(),
+  used: z.number().int().nonnegative(),
+  limit: z.number().int().nullable().optional(),
+});
+
+export const billingStatusSchema = z.object({
+  planKey: z.string(),
+  status: billingSubscriptionStatusSchema,
+  currentPeriodEnd: z.string().nullable().optional(),
+  cancelAtPeriodEnd: z.boolean(),
+  entitlements: z.array(planEntitlementSchema),
+  usage: z.array(usageCounterSchema),
+});
+
+export const getBillingStatusResponseSchema = z.object({
+  billing: billingStatusSchema,
+  correlationId: z.string(),
+});
+
 export const memoryKindSchema = z.enum([
   "founder_profile",
   "company_fact",
@@ -394,10 +433,15 @@ export type CreateCommandResponse = z.infer<typeof createCommandResponseSchema>;
 export type CurrentFounderResponse = z.infer<typeof currentFounderResponseSchema>;
 export type FounderAccount = z.infer<typeof founderAccountSchema>;
 export type FounderSessionSummary = z.infer<typeof founderSessionSummarySchema>;
+export type BillingStatus = z.infer<typeof billingStatusSchema>;
+export type BillingSubscriptionStatus = z.infer<typeof billingSubscriptionStatusSchema>;
 export type GetFounderAccountResponse = z.infer<typeof getFounderAccountResponseSchema>;
+export type GetBillingStatusResponse = z.infer<typeof getBillingStatusResponseSchema>;
 export type ListFounderSessionsResponse = z.infer<typeof listFounderSessionsResponseSchema>;
+export type PlanEntitlement = z.infer<typeof planEntitlementSchema>;
 export type RevokeFounderSessionResponse = z.infer<typeof revokeFounderSessionResponseSchema>;
 export type UpdateFounderAccountRequest = z.infer<typeof updateFounderAccountRequestSchema>;
+export type UsageCounter = z.infer<typeof usageCounterSchema>;
 export type ExecutionPlan = z.infer<typeof executionPlanSchema>;
 export type ExecutionStep = z.infer<typeof executionStepSchema>;
 export type ExecutionJob = z.infer<typeof executionJobSchema>;
