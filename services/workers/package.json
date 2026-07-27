@@ -9,7 +9,7 @@
     "dev": "tsx watch src/main.ts",
     "lint": "eslint .",
     "test": "echo \"No tests yet\"",
-    "test:integration": "tsx src/integration/execution-runtime.integration.ts",
+    "test:integration": "tsx src/integration/execution-runtime.integration.ts && tsx src/integration/github-provider.integration.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -19,6 +19,7 @@
     "@faios/events": "workspace:*",
     "@faios/logger": "workspace:*",
     "@faios/mcp": "workspace:*",
+    "@faios/security": "workspace:*",
     "amqplib": "^2.0.1"
   },
   "devDependencies": {

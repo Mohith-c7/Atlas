@@ -5,6 +5,8 @@ import { ExecutionWorker } from "./execution/execution-worker.js";
 import { ExecutionPollingLoop } from "./execution/execution-polling-loop.js";
 import { RabbitMqExecutionConsumer } from "./execution/rabbitmq-execution-consumer.js";
 import { RegistryMcpToolExecutor } from "./execution/registry-mcp-tool-executor.js";
+import { DatabaseMcpCredentialResolver } from "./execution/database-mcp-credential-resolver.js";
+import { createDefaultMcpAdapterRegistry } from "@faios/mcp";
 
 const logger = createLogger("workers");
 
@@ -14,7 +16,12 @@ const pollIntervalMs = Number(process.env.WORKER_EXECUTION_POLL_INTERVAL_MS ?? 5
 
 const worker = new ExecutionWorker(
   new ExecutionRepository(getPrismaClient()),
-  new RegistryMcpToolExecutor(),
+  new RegistryMcpToolExecutor(
+    createDefaultMcpAdapterRegistry({
+      credentialResolver: new DatabaseMcpCredentialResolver(getPrismaClient()),
+      includeRealProviderAdapters: process.env.WORKER_REAL_PROVIDER_ADAPTERS_ENABLED === "true",
+    }),
+  ),
   logger,
 );
 

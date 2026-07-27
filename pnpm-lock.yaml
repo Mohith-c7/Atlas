@@ -411,6 +411,9 @@ importers:
       '@faios/mcp':
         specifier: workspace:*
         version: link:../../packages/mcp
+      '@faios/security':
+        specifier: workspace:*
+        version: link:../../packages/security
       amqplib:
         specifier: ^2.0.1
         version: 2.0.1
