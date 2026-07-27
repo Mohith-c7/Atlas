@@ -1,6 +1,7 @@
 import {
   ExecutionApiError,
   type CommandExecutionStatus,
+  type CommandExecutionSnapshotEvent,
   type CommandExecutionTimelineItem,
   type ExecutionApiErrorResponse,
   type ExecutionStatus,
@@ -11,6 +12,7 @@ import {
 const BUSINESS_API_URL =
   process.env.NEXT_PUBLIC_BUSINESS_API_URL?.replace(/\/$/, "") ?? "http://localhost:4000";
 const EXECUTIONS_ENDPOINT = `${BUSINESS_API_URL}/api/v1/commands/executions`;
+export const EXECUTIONS_EVENTS_ENDPOINT = `${EXECUTIONS_ENDPOINT}/events`;
 
 const commandStatuses = new Set<CommandExecutionStatus>([
   "received",
@@ -132,6 +134,26 @@ function normalizeExecutionsResponse(payload: unknown): ListCommandExecutionsRes
     executions: executionItems
       .map((item) => normalizeExecution(item))
       .filter((item): item is CommandExecutionTimelineItem => Boolean(item)),
+  };
+}
+
+export function normalizeExecutionSnapshotEvent(
+  payload: unknown,
+): CommandExecutionSnapshotEvent | undefined {
+  if (
+    !isRecord(payload) ||
+    payload.event !== "command.execution.snapshot" ||
+    typeof payload.correlationId !== "string" ||
+    typeof payload.emittedAt !== "string"
+  ) {
+    return undefined;
+  }
+
+  return {
+    event: "command.execution.snapshot",
+    correlationId: payload.correlationId,
+    emittedAt: payload.emittedAt,
+    executions: normalizeExecutionsResponse(payload).executions,
   };
 }
 

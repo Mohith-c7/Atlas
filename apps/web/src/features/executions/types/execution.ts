@@ -41,6 +41,13 @@ export type ListCommandExecutionsResponse = {
   executions: CommandExecutionTimelineItem[];
 };
 
+export type CommandExecutionSnapshotEvent = {
+  event: "command.execution.snapshot";
+  executions: CommandExecutionTimelineItem[];
+  correlationId: string;
+  emittedAt: string;
+};
+
 export type ExecutionApiErrorResponse = {
   code: string;
   message: string;

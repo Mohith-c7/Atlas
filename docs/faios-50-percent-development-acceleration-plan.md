@@ -170,7 +170,7 @@ Each completed implementation slice must:
 - [x] GitHub OAuth foundation replaces manual token setup as the production path.
 - [x] LangGraph planner foundation exists.
 - [x] Memory write/read foundation exists.
-- [ ] Realtime execution updates exist.
+- [x] Realtime execution updates exist.
 - [ ] Voice input foundation exists.
 - [ ] Observability and readiness endpoints exist.
 - [ ] CI validates critical runtime paths.

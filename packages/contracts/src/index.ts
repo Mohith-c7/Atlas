@@ -252,6 +252,13 @@ export const listCommandExecutionsResponseSchema = z.object({
   executions: z.array(commandExecutionTimelineItemSchema),
 });
 
+export const commandExecutionSnapshotEventSchema = z.object({
+  event: z.literal("command.execution.snapshot"),
+  executions: z.array(commandExecutionTimelineItemSchema),
+  correlationId: z.string(),
+  emittedAt: z.string(),
+});
+
 export const apiErrorSchema = z.object({
   code: z.string(),
   message: z.string(),
@@ -292,6 +299,7 @@ export type IntegrationConnectionStatus = z.infer<typeof integrationConnectionSt
 export type IntegrationProvider = z.infer<typeof integrationProviderSchema>;
 export type ListCapabilitiesResponse = z.infer<typeof listCapabilitiesResponseSchema>;
 export type ListCommandExecutionsResponse = z.infer<typeof listCommandExecutionsResponseSchema>;
+export type CommandExecutionSnapshotEvent = z.infer<typeof commandExecutionSnapshotEventSchema>;
 export type ListIntegrationConnectionsResponse = z.infer<
   typeof listIntegrationConnectionsResponseSchema
 >;

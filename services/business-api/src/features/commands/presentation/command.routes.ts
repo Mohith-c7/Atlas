@@ -1,9 +1,11 @@
-import { createCommandRequestSchema } from "@faios/contracts";
+import { createCommandRequestSchema, type CommandExecutionSnapshotEvent } from "@faios/contracts";
 import { getPrismaClient } from "@faios/database";
 import type { FastifyPluginCallback } from "fastify";
 import { sendError } from "../../../lib/errors.js";
 import { CreateCommandUseCase } from "../application/create-command.use-case.js";
 import { ListCommandExecutionsUseCase } from "../application/list-command-executions.use-case.js";
+
+const EXECUTION_STREAM_INTERVAL_MS = 2_000;
 
 export const commandRoutes: FastifyPluginCallback = (server, _options, done) => {
   server.get("/api/v1/commands/executions", async (request, reply) => {
@@ -22,6 +24,64 @@ export const commandRoutes: FastifyPluginCallback = (server, _options, done) => 
 
       return sendError(reply, error, request.correlationId);
     }
+  });
+
+  server.get("/api/v1/commands/executions/events", async (request, reply) => {
+    const useCase = new ListCommandExecutionsUseCase(getPrismaClient());
+    let closed = false;
+
+    reply.hijack();
+    reply.raw.writeHead(200, {
+      "cache-control": "no-cache, no-transform",
+      connection: "keep-alive",
+      "content-type": "text/event-stream",
+      "x-accel-buffering": "no",
+    });
+    reply.raw.write(": connected\n\n");
+
+    const sendSnapshot = async () => {
+      if (closed) {
+        return;
+      }
+
+      try {
+        const response = await useCase.execute(request.founderSession);
+        const event: CommandExecutionSnapshotEvent = {
+          event: "command.execution.snapshot",
+          executions: response.executions,
+          correlationId: request.correlationId,
+          emittedAt: new Date().toISOString(),
+        };
+
+        reply.raw.write(`event: ${event.event}\n`);
+        reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
+      } catch (error) {
+        request.log.error(
+          {
+            correlationId: request.correlationId,
+            error,
+          },
+          "Failed to stream command execution snapshot",
+        );
+        reply.raw.write(
+          `event: command.execution.error\ndata: ${JSON.stringify({
+            correlationId: request.correlationId,
+            message: "Unable to stream command execution updates.",
+          })}\n\n`,
+        );
+      }
+    };
+
+    const interval = setInterval(() => {
+      void sendSnapshot();
+    }, EXECUTION_STREAM_INTERVAL_MS);
+
+    request.raw.on("close", () => {
+      closed = true;
+      clearInterval(interval);
+    });
+
+    await sendSnapshot();
   });
 
   server.post("/api/v1/commands", async (request, reply) => {
