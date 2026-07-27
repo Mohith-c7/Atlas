@@ -1,10 +1,21 @@
-import { updateMemoryItemRequestSchema } from "@faios/contracts";
+import {
+  archiveMemoryItemRequestSchema,
+  importMemoryItemsRequestSchema,
+  mergeMemoryItemsRequestSchema,
+  searchMemoryRequestSchema,
+  updateMemoryItemRequestSchema,
+} from "@faios/contracts";
 import { getPrismaClient } from "@faios/database";
 import type { FastifyPluginCallback } from "fastify";
 import { sendError } from "../../../lib/errors.js";
+import { ArchiveMemoryItemUseCase } from "../application/archive-memory-item.use-case.js";
 import { DeleteMemoryItemUseCase } from "../application/delete-memory-item.use-case.js";
 import { ExportMemoryItemsUseCase } from "../application/export-memory-items.use-case.js";
+import { ImportMemoryItemsUseCase } from "../application/import-memory-items.use-case.js";
 import { ListMemoryItemsUseCase } from "../application/list-memory-items.use-case.js";
+import { MergeMemoryItemsUseCase } from "../application/merge-memory-items.use-case.js";
+import { PurgeExpiredMemoryItemsUseCase } from "../application/purge-expired-memory-items.use-case.js";
+import { SearchMemoryItemsUseCase } from "../application/search-memory-items.use-case.js";
 import { UpdateMemoryItemUseCase } from "../application/update-memory-item.use-case.js";
 
 type MemoryItemParams = {
@@ -54,6 +65,129 @@ export const memoryRoutes: FastifyPluginCallback = (server, _options, done) => {
           error,
         },
         "Failed to export memory items",
+      );
+
+      return sendError(reply, error, request.correlationId);
+    }
+  });
+
+  server.post("/api/v1/memory/import", async (request, reply) => {
+    const parsedBody = importMemoryItemsRequestSchema.safeParse(request.body);
+
+    if (!parsedBody.success) {
+      return reply.status(400).send({
+        code: "VALIDATION_ERROR",
+        message: "Invalid memory import request.",
+        correlationId: request.correlationId,
+        details: parsedBody.error.flatten(),
+      });
+    }
+
+    const useCase = new ImportMemoryItemsUseCase(getPrismaClient());
+
+    try {
+      const response = await useCase.execute({
+        founderSession: request.founderSession,
+        request: parsedBody.data,
+        correlationId: request.correlationId,
+      });
+
+      request.log.info(
+        {
+          importedCount: response.importedCount,
+          replacedExistingCount: response.replacedExistingCount,
+          correlationId: response.correlationId,
+        },
+        "Memory items imported",
+      );
+
+      return reply.status(200).send(response);
+    } catch (error) {
+      request.log.error(
+        {
+          correlationId: request.correlationId,
+          error,
+        },
+        "Failed to import memory items",
+      );
+
+      return sendError(reply, error, request.correlationId);
+    }
+  });
+
+  server.post("/api/v1/memory/search", async (request, reply) => {
+    const parsedBody = searchMemoryRequestSchema.safeParse(request.body);
+
+    if (!parsedBody.success) {
+      return reply.status(400).send({
+        code: "VALIDATION_ERROR",
+        message: "Invalid memory search request.",
+        correlationId: request.correlationId,
+        details: parsedBody.error.flatten(),
+      });
+    }
+
+    const useCase = new SearchMemoryItemsUseCase(getPrismaClient());
+
+    try {
+      return reply.status(200).send(
+        await useCase.execute({
+          founderSession: request.founderSession,
+          request: parsedBody.data,
+          correlationId: request.correlationId,
+        }),
+      );
+    } catch (error) {
+      request.log.error(
+        {
+          correlationId: request.correlationId,
+          error,
+        },
+        "Failed to search memory items",
+      );
+
+      return sendError(reply, error, request.correlationId);
+    }
+  });
+
+  server.post("/api/v1/memory/merge", async (request, reply) => {
+    const parsedBody = mergeMemoryItemsRequestSchema.safeParse(request.body);
+
+    if (!parsedBody.success) {
+      return reply.status(400).send({
+        code: "VALIDATION_ERROR",
+        message: "Invalid memory merge request.",
+        correlationId: request.correlationId,
+        details: parsedBody.error.flatten(),
+      });
+    }
+
+    const useCase = new MergeMemoryItemsUseCase(getPrismaClient());
+
+    try {
+      const response = await useCase.execute({
+        founderSession: request.founderSession,
+        request: parsedBody.data,
+        correlationId: request.correlationId,
+      });
+
+      request.log.info(
+        {
+          memoryId: response.memory.id,
+          mergedMemoryIds: response.mergedMemoryIds,
+          correlationId: response.correlationId,
+        },
+        "Memory items merged",
+      );
+
+      return reply.status(200).send(response);
+    } catch (error) {
+      request.log.error(
+        {
+          correlationId: request.correlationId,
+          error,
+        },
+        "Failed to merge memory items",
       );
 
       return sendError(reply, error, request.correlationId);
@@ -143,6 +277,86 @@ export const memoryRoutes: FastifyPluginCallback = (server, _options, done) => {
       }
     },
   );
+
+  server.post<{ Params: MemoryItemParams }>(
+    "/api/v1/memory/items/:memoryId/archive",
+    { schema: { params: memoryItemParamsSchema } },
+    async (request, reply) => {
+      const parsedBody = archiveMemoryItemRequestSchema.safeParse(request.body ?? undefined);
+
+      if (!parsedBody.success) {
+        return reply.status(400).send({
+          code: "VALIDATION_ERROR",
+          message: "Invalid memory archive request.",
+          correlationId: request.correlationId,
+          details: parsedBody.error.flatten(),
+        });
+      }
+
+      const useCase = new ArchiveMemoryItemUseCase(getPrismaClient());
+
+      try {
+        const response = await useCase.execute({
+          founderSession: request.founderSession,
+          memoryId: request.params.memoryId,
+          request: parsedBody.data,
+          correlationId: request.correlationId,
+        });
+
+        request.log.info(
+          {
+            memoryId: response.memory.id,
+            archived: Boolean(response.memory.archivedAt),
+            correlationId: response.correlationId,
+          },
+          "Memory item archive state changed",
+        );
+
+        return reply.status(200).send(response);
+      } catch (error) {
+        request.log.error(
+          {
+            correlationId: request.correlationId,
+            error,
+          },
+          "Failed to archive memory item",
+        );
+
+        return sendError(reply, error, request.correlationId);
+      }
+    },
+  );
+
+  server.post("/api/v1/memory/retention/purge", async (request, reply) => {
+    const useCase = new PurgeExpiredMemoryItemsUseCase(getPrismaClient());
+
+    try {
+      const response = await useCase.execute({
+        founderSession: request.founderSession,
+        correlationId: request.correlationId,
+      });
+
+      request.log.info(
+        {
+          purgedCount: response.purgedCount,
+          correlationId: response.correlationId,
+        },
+        "Expired memory items purged",
+      );
+
+      return reply.status(200).send(response);
+    } catch (error) {
+      request.log.error(
+        {
+          correlationId: request.correlationId,
+          error,
+        },
+        "Failed to purge expired memory items",
+      );
+
+      return sendError(reply, error, request.correlationId);
+    }
+  });
 
   done();
 };

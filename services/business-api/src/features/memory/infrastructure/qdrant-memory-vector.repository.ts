@@ -4,6 +4,15 @@ type QdrantPoint = {
   readonly payload: Record<string, unknown>;
 };
 
+export type QdrantMemorySearchMatch = {
+  readonly id: string;
+  readonly score: number;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object";
+}
+
 export class QdrantMemoryVectorRepository {
   public constructor(
     private readonly baseUrl = process.env.QDRANT_URL ?? "http://localhost:6333",
@@ -34,7 +43,7 @@ export class QdrantMemoryVectorRepository {
     founderId: string;
     vector: readonly number[];
     limit: number;
-  }): Promise<unknown> {
+  }): Promise<QdrantMemorySearchMatch[]> {
     const response = await fetch(
       `${this.baseUrl}/collections/${this.collectionName}/points/search`,
       {
@@ -64,7 +73,24 @@ export class QdrantMemoryVectorRepository {
       throw new Error(`Qdrant memory search failed with status ${response.status}.`);
     }
 
-    return response.json();
+    const payload: unknown = await response.json();
+
+    if (!isRecord(payload) || !Array.isArray(payload.result)) {
+      return [];
+    }
+
+    return payload.result
+      .map((item) => {
+        if (!isRecord(item) || typeof item.id !== "string" || typeof item.score !== "number") {
+          return undefined;
+        }
+
+        return {
+          id: item.id,
+          score: Math.max(0, Math.min(1, item.score)),
+        };
+      })
+      .filter((item): item is QdrantMemorySearchMatch => Boolean(item));
   }
 
   private async upsertPoints(points: QdrantPoint[]): Promise<void> {

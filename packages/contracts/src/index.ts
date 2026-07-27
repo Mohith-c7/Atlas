@@ -383,6 +383,9 @@ export const memoryContextItemSchema = z.object({
 });
 
 export const memoryItemSchema = memoryContextItemSchema.extend({
+  archivedAt: z.string().nullable(),
+  deletedAt: z.string().nullable(),
+  retainUntil: z.string().nullable(),
   updatedAt: z.string(),
 });
 
@@ -407,12 +410,83 @@ export const updateMemoryItemResponseSchema = z.object({
 
 export const deleteMemoryItemResponseSchema = z.object({
   deletedMemoryId: z.string(),
+  retainUntil: z.string(),
+  correlationId: z.string(),
+});
+
+export const archiveMemoryItemRequestSchema = z
+  .object({
+    archived: z.boolean().default(true),
+  })
+  .default({
+    archived: true,
+  });
+
+export const archiveMemoryItemResponseSchema = z.object({
+  memory: memoryItemSchema,
+  correlationId: z.string(),
+});
+
+export const purgeExpiredMemoryItemsResponseSchema = z.object({
+  purgedCount: z.number().int().nonnegative(),
+  purgedMemoryIds: z.array(z.string()),
+  cutoff: z.string(),
   correlationId: z.string(),
 });
 
 export const exportMemoryItemsResponseSchema = z.object({
   memories: z.array(memoryItemSchema),
   exportedAt: z.string(),
+  correlationId: z.string(),
+});
+
+export const importMemoryItemSchema = z.object({
+  kind: memoryKindSchema,
+  content: z.string().trim().min(1).max(4000),
+  source: z.string().trim().min(1).max(120).nullable().optional(),
+  confidence: z.number().min(0).max(1).nullable().optional(),
+});
+
+export const importMemoryItemsRequestSchema = z.object({
+  mode: z.enum(["append", "replace"]).default("append"),
+  memories: z.array(importMemoryItemSchema).min(1).max(1000),
+});
+
+export const importMemoryItemsResponseSchema = z.object({
+  memories: z.array(memoryItemSchema),
+  importedCount: z.number().int().nonnegative(),
+  replacedExistingCount: z.number().int().nonnegative(),
+  importedAt: z.string(),
+  correlationId: z.string(),
+});
+
+export const searchMemoryRequestSchema = z.object({
+  query: z.string().trim().min(2).max(1000),
+  limit: z.number().int().min(1).max(25).optional(),
+});
+
+export const memorySearchMatchSchema = z.object({
+  memory: memoryItemSchema,
+  score: z.number().min(0).max(1),
+  matchReason: z.string(),
+});
+
+export const searchMemoryResponseSchema = z.object({
+  matches: z.array(memorySearchMatchSchema),
+  searchedAt: z.string(),
+  correlationId: z.string(),
+});
+
+export const mergeMemoryItemsRequestSchema = z.object({
+  primaryMemoryId: z.string().min(1).max(256),
+  duplicateMemoryIds: z.array(z.string().min(1).max(256)).min(1).max(20),
+  content: z.string().trim().min(1).max(4000).optional(),
+  kind: memoryKindSchema.optional(),
+});
+
+export const mergeMemoryItemsResponseSchema = z.object({
+  memory: memoryItemSchema,
+  mergedMemoryIds: z.array(z.string()),
   correlationId: z.string(),
 });
 
@@ -610,7 +684,10 @@ export type CreateBillingPortalSessionResponse = z.infer<
 >;
 export type ListFounderSessionsResponse = z.infer<typeof listFounderSessionsResponseSchema>;
 export type ListMemoryItemsResponse = z.infer<typeof listMemoryItemsResponseSchema>;
+export type ArchiveMemoryItemRequest = z.infer<typeof archiveMemoryItemRequestSchema>;
+export type ArchiveMemoryItemResponse = z.infer<typeof archiveMemoryItemResponseSchema>;
 export type PlanEntitlement = z.infer<typeof planEntitlementSchema>;
+export type PurgeExpiredMemoryItemsResponse = z.infer<typeof purgeExpiredMemoryItemsResponseSchema>;
 export type RevokeFounderSessionResponse = z.infer<typeof revokeFounderSessionResponseSchema>;
 export type UpdateFounderAccountRequest = z.infer<typeof updateFounderAccountRequestSchema>;
 export type UsageCounter = z.infer<typeof usageCounterSchema>;
@@ -666,6 +743,14 @@ export type UpdateMemoryItemRequest = z.infer<typeof updateMemoryItemRequestSche
 export type UpdateMemoryItemResponse = z.infer<typeof updateMemoryItemResponseSchema>;
 export type DeleteMemoryItemResponse = z.infer<typeof deleteMemoryItemResponseSchema>;
 export type ExportMemoryItemsResponse = z.infer<typeof exportMemoryItemsResponseSchema>;
+export type ImportMemoryItem = z.infer<typeof importMemoryItemSchema>;
+export type ImportMemoryItemsRequest = z.infer<typeof importMemoryItemsRequestSchema>;
+export type ImportMemoryItemsResponse = z.infer<typeof importMemoryItemsResponseSchema>;
+export type SearchMemoryRequest = z.infer<typeof searchMemoryRequestSchema>;
+export type MemorySearchMatch = z.infer<typeof memorySearchMatchSchema>;
+export type SearchMemoryResponse = z.infer<typeof searchMemoryResponseSchema>;
+export type MergeMemoryItemsRequest = z.infer<typeof mergeMemoryItemsRequestSchema>;
+export type MergeMemoryItemsResponse = z.infer<typeof mergeMemoryItemsResponseSchema>;
 export type McpCapability = z.infer<typeof mcpCapabilitySchema>;
 export type McpCapabilityStatus = z.infer<typeof mcpCapabilityStatusSchema>;
 export type Pagination = z.infer<typeof paginationSchema>;

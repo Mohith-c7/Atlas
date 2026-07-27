@@ -447,9 +447,15 @@ model MemoryItem {
   confidence  Float?
   vectorRef   String?
   metadata    Json?
+  archivedAt  DateTime?
+  deletedAt   DateTime?
+  retainUntil DateTime?
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
   @@index([founderId, kind])
+  @@index([founderId, archivedAt])
+  @@index([founderId, deletedAt])
+  @@index([retainUntil])
   @@index([vectorRef])
 }

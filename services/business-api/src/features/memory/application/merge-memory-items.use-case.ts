@@ -1,12 +1,16 @@
-import type { UpdateMemoryItemRequest, UpdateMemoryItemResponse } from "@faios/contracts";
+import type { MergeMemoryItemsRequest, MergeMemoryItemsResponse } from "@faios/contracts";
 import type { PrismaClient } from "@faios/database";
+import { redactSensitiveText } from "@faios/security";
 import { AppError } from "../../../lib/errors.js";
 import type { FounderSession } from "../../../lib/founder-session.js";
 import { resolveFounderAccount } from "../../commands/infrastructure/founder-resolver.js";
 import { MemoryRepository } from "../infrastructure/memory.repository.js";
-import { redactMemoryContent } from "./redact-memory-content.js";
 
-export class UpdateMemoryItemUseCase {
+function redactMergedContent(value: string): string {
+  return redactSensitiveText(value).trim();
+}
+
+export class MergeMemoryItemsUseCase {
   private readonly repository: MemoryRepository;
 
   public constructor(private readonly database: PrismaClient) {
@@ -15,30 +19,26 @@ export class UpdateMemoryItemUseCase {
 
   public async execute(input: {
     founderSession: FounderSession | undefined;
-    memoryId: string;
-    patch: UpdateMemoryItemRequest;
+    request: MergeMemoryItemsRequest;
     correlationId: string;
-  }): Promise<UpdateMemoryItemResponse> {
+  }): Promise<MergeMemoryItemsResponse> {
     const founder = await resolveFounderAccount(this.database, input.founderSession);
-    const content = input.patch.content
-      ? redactMemoryContent(input.patch.content).trim()
-      : undefined;
+    const content = input.request.content ? redactMergedContent(input.request.content) : undefined;
 
-    if (input.patch.content !== undefined && !content) {
-      throw new AppError("MEMORY_CONTENT_EMPTY", "Memory content cannot be empty.", 400);
+    if (input.request.content !== undefined && !content) {
+      throw new AppError("MEMORY_CONTENT_EMPTY", "Merged memory content cannot be empty.", 400);
     }
 
-    const memory = await this.repository.updateMemoryItem({
+    const result = await this.repository.mergeMemoryItems({
       founderId: founder.id,
-      memoryId: input.memoryId,
-      patch: {
-        ...input.patch,
+      request: {
+        ...input.request,
         content,
       },
     });
 
     return {
-      memory,
+      ...result,
       correlationId: input.correlationId,
     };
   }

@@ -1,10 +1,10 @@
-import type { DeleteMemoryItemResponse } from "@faios/contracts";
+import type { PurgeExpiredMemoryItemsResponse } from "@faios/contracts";
 import type { PrismaClient } from "@faios/database";
 import type { FounderSession } from "../../../lib/founder-session.js";
 import { resolveFounderAccount } from "../../commands/infrastructure/founder-resolver.js";
 import { MemoryRepository } from "../infrastructure/memory.repository.js";
 
-export class DeleteMemoryItemUseCase {
+export class PurgeExpiredMemoryItemsUseCase {
   private readonly repository: MemoryRepository;
 
   public constructor(private readonly database: PrismaClient) {
@@ -13,18 +13,20 @@ export class DeleteMemoryItemUseCase {
 
   public async execute(input: {
     founderSession: FounderSession | undefined;
-    memoryId: string;
     correlationId: string;
-  }): Promise<DeleteMemoryItemResponse> {
+    cutoff?: Date;
+  }): Promise<PurgeExpiredMemoryItemsResponse> {
     const founder = await resolveFounderAccount(this.database, input.founderSession);
-    const deletion = await this.repository.deleteMemoryItem({
+    const cutoff = input.cutoff ?? new Date();
+    const purgedMemoryIds = await this.repository.purgeExpiredDeletedMemoryItems({
       founderId: founder.id,
-      memoryId: input.memoryId,
+      cutoff,
     });
 
     return {
-      deletedMemoryId: deletion.deletedMemoryId,
-      retainUntil: deletion.retainUntil.toISOString(),
+      purgedCount: purgedMemoryIds.length,
+      purgedMemoryIds,
+      cutoff: cutoff.toISOString(),
       correlationId: input.correlationId,
     };
   }

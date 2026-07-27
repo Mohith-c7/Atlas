@@ -809,6 +809,33 @@ M15.1 adds the founder console shell that organizes command, operations, integra
 - `pnpm test`
 - `pnpm build`
 
+## Fourteenth Next Implementation Slice
+
+M13.2 closes the remaining founder memory intelligence gaps: semantic search, import/restore, retention/archive, and merge/deduplication.
+
+### M13.2 Checklist
+
+- [x] Add memory import/restore contracts and APIs.
+- [x] Add append and replace import modes with sensitive-content redaction.
+- [x] Add semantic memory search contract, backend use case, and founder-facing web controls.
+- [x] Add deterministic text vectors with Qdrant search when available and founder-scoped lexical fallback.
+- [x] Add memory merge/dedup contracts, backend transaction, and web selection workflow.
+- [x] Add archive/unarchive controls.
+- [x] Convert delete into soft delete with retention metadata.
+- [x] Add retention purge endpoint for expired deleted memory.
+- [x] Add Prisma migration for memory lifecycle fields.
+- [x] Extend runtime integration coverage for founder isolation, import, search, merge, archive, soft delete, and purge.
+
+### M13.2 Completion Gate
+
+- `pnpm format:check`
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm test`
+- `pnpm build`
+- `pnpm --filter @faios/database exec prisma migrate deploy --schema prisma/schema.prisma`
+- `pnpm --filter @faios/business-api test:integration`
+
 ## Out Of Scope For V1
 
 - Team workspaces.
