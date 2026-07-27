@@ -84,6 +84,7 @@ model FounderAccount {
   companyProfile CompanyProfile?
   integrations   IntegrationConnection[]
   oauthStates    IntegrationOAuthState[]
+  lifecycleEvents IntegrationLifecycleEvent[]
   conversations  Conversation[]
   commands       Command[]
   memoryItems    MemoryItem[]
@@ -248,12 +249,19 @@ model IntegrationConnection {
   provider       String
   accountLabel   String?
   status         String
+  statusReason   String?
   capabilityKeys String[]
   metadata       Json?
+  connectedAt    DateTime?
+  disconnectedAt DateTime?
+  lastHealthStatus String?
+  lastHealthCheckedAt DateTime?
+  lastHealthMessage String?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   credential     IntegrationCredential?
   invocations    ToolInvocation[]
+  lifecycleEvents IntegrationLifecycleEvent[]
 
   @@unique([founderId, provider])
   @@index([founderId, provider])
@@ -265,10 +273,28 @@ model IntegrationCredential {
   integration     IntegrationConnection @relation(fields: [integrationId], references: [id], onDelete: Cascade)
   encryptedPayload Json
   keyVersion      String
+  rotatedAt       DateTime?
+  rotationReason  String?
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
 
   @@index([keyVersion])
+}
+
+model IntegrationLifecycleEvent {
+  id            String                 @id @default(cuid())
+  founderId     String
+  founder       FounderAccount         @relation(fields: [founderId], references: [id], onDelete: Cascade)
+  integrationId String?
+  integration   IntegrationConnection? @relation(fields: [integrationId], references: [id], onDelete: SetNull)
+  provider      String
+  eventType     String
+  reason        String?
+  metadata      Json?
+  createdAt     DateTime               @default(now())
+
+  @@index([founderId, provider, createdAt])
+  @@index([integrationId, eventType])
 }
 
 model IntegrationOAuthState {

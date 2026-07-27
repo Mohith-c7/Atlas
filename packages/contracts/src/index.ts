@@ -235,6 +235,7 @@ export const integrationConnectionSchema = z.object({
   provider: integrationProviderSchema,
   accountLabel: z.string().nullable().optional(),
   status: integrationConnectionStatusSchema,
+  statusReason: z.string().nullable().optional(),
   capabilityKeys: z.array(z.string()),
   metadata: z
     .object({
@@ -244,8 +245,37 @@ export const integrationConnectionSchema = z.object({
     })
     .passthrough()
     .optional(),
+  connectedAt: z.string().nullable().optional(),
+  disconnectedAt: z.string().nullable().optional(),
+  lastHealthStatus: z.string().nullable().optional(),
+  lastHealthCheckedAt: z.string().nullable().optional(),
+  lastHealthMessage: z.string().nullable().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
+});
+
+export const disconnectIntegrationRequestSchema = z.object({
+  reason: z.string().trim().min(1).max(500).optional(),
+});
+
+export const disconnectIntegrationResponseSchema = z.object({
+  connection: integrationConnectionSchema,
+  correlationId: z.string(),
+});
+
+export const reconnectIntegrationResponseSchema = z.object({
+  connection: integrationConnectionSchema,
+  correlationId: z.string(),
+});
+
+export const rotateGitHubCredentialRequestSchema = githubIntegrationConnectionRequestSchema.extend({
+  reason: z.string().trim().min(1).max(500).optional(),
+});
+
+export const rotateIntegrationCredentialResponseSchema = z.object({
+  connection: integrationConnectionSchema,
+  rotatedAt: z.string(),
+  correlationId: z.string(),
 });
 
 export const integrationCatalogItemSchema = z.object({
@@ -543,6 +573,13 @@ export type ListIntegrationConnectionsResponse = z.infer<
 export type ListIntegrationCatalogResponse = z.infer<typeof listIntegrationCatalogResponseSchema>;
 export type GetIntegrationProviderStatusResponse = z.infer<
   typeof getIntegrationProviderStatusResponseSchema
+>;
+export type DisconnectIntegrationRequest = z.infer<typeof disconnectIntegrationRequestSchema>;
+export type DisconnectIntegrationResponse = z.infer<typeof disconnectIntegrationResponseSchema>;
+export type ReconnectIntegrationResponse = z.infer<typeof reconnectIntegrationResponseSchema>;
+export type RotateGitHubCredentialRequest = z.infer<typeof rotateGitHubCredentialRequestSchema>;
+export type RotateIntegrationCredentialResponse = z.infer<
+  typeof rotateIntegrationCredentialResponseSchema
 >;
 export type ListApprovalsResponse = z.infer<typeof listApprovalsResponseSchema>;
 export type MemoryContextItem = z.infer<typeof memoryContextItemSchema>;

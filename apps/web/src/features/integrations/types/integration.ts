@@ -5,6 +5,7 @@ export type IntegrationConnection = {
   provider: "github";
   accountLabel?: string | null;
   status: IntegrationConnectionStatus;
+  statusReason?: string | null;
   capabilityKeys: string[];
   metadata?: {
     owner?: string;
@@ -12,6 +13,11 @@ export type IntegrationConnection = {
     apiBaseUrl?: string;
     [key: string]: unknown;
   };
+  connectedAt?: string | null;
+  disconnectedAt?: string | null;
+  lastHealthStatus?: string | null;
+  lastHealthCheckedAt?: string | null;
+  lastHealthMessage?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -66,6 +72,10 @@ export type ConnectGitHubIntegrationRequest = {
   apiBaseUrl?: string;
 };
 
+export type RotateGitHubCredentialRequest = ConnectGitHubIntegrationRequest & {
+  reason?: string;
+};
+
 export type StartGitHubOAuthRequest = {
   accountLabel?: string;
   owner: string;
@@ -83,6 +93,12 @@ export type StartGitHubOAuthResponse = {
 
 export type ConnectIntegrationResponse = {
   connection: IntegrationConnection;
+  correlationId: string;
+};
+
+export type RotateIntegrationCredentialResponse = {
+  connection: IntegrationConnection;
+  rotatedAt: string;
   correlationId: string;
 };
 

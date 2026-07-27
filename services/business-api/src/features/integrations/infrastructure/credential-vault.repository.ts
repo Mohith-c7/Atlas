@@ -20,6 +20,10 @@ export class CredentialVaultRepository {
   public async upsertIntegrationCredential(
     integrationId: string,
     credentialPayload: unknown,
+    options: {
+      readonly rotatedAt?: Date;
+      readonly rotationReason?: string;
+    } = {},
   ): Promise<void> {
     const encryptedPayload = encryptJsonPayload(credentialPayload, this.encryptionKey);
 
@@ -31,10 +35,14 @@ export class CredentialVaultRepository {
         integrationId,
         encryptedPayload,
         keyVersion: encryptedPayload.keyVersion,
+        rotatedAt: options.rotatedAt,
+        rotationReason: options.rotationReason,
       },
       update: {
         encryptedPayload,
         keyVersion: encryptedPayload.keyVersion,
+        rotatedAt: options.rotatedAt,
+        rotationReason: options.rotationReason,
       },
     });
   }

@@ -1,5 +1,8 @@
 import {
+  disconnectIntegrationRequestSchema,
   githubIntegrationConnectionRequestSchema,
+  integrationProviderSchema,
+  rotateGitHubCredentialRequestSchema,
   startGitHubOAuthRequestSchema,
 } from "@faios/contracts";
 import { getPrismaClient } from "@faios/database";
@@ -7,9 +10,12 @@ import type { FastifyPluginCallback } from "fastify";
 import { sendError } from "../../../lib/errors.js";
 import { CompleteGitHubOAuthUseCase } from "../application/complete-github-oauth.use-case.js";
 import { ConnectGitHubIntegrationUseCase } from "../application/connect-github-integration.use-case.js";
+import { DisconnectIntegrationUseCase } from "../application/disconnect-integration.use-case.js";
 import { GetIntegrationProviderStatusUseCase } from "../application/get-integration-provider-status.use-case.js";
 import { ListIntegrationCatalogUseCase } from "../application/list-integration-catalog.use-case.js";
 import { ListIntegrationConnectionsUseCase } from "../application/list-integration-connections.use-case.js";
+import { ReconnectIntegrationUseCase } from "../application/reconnect-integration.use-case.js";
+import { RotateGitHubCredentialUseCase } from "../application/rotate-github-credential.use-case.js";
 import { StartGitHubOAuthUseCase } from "../application/start-github-oauth.use-case.js";
 
 function getQueryValue(value: unknown): string | undefined {
@@ -79,6 +85,158 @@ export const integrationRoutes: FastifyPluginCallback = (server, _options, done)
           error,
         },
         "Failed to list integration connections",
+      );
+
+      return sendError(reply, error, request.correlationId);
+    }
+  });
+
+  server.post<{ Params: { provider: string } }>(
+    "/api/v1/integrations/:provider/disconnect",
+    async (request, reply) => {
+      const provider = integrationProviderSchema.safeParse(request.params.provider);
+      const parsed = disconnectIntegrationRequestSchema.safeParse(request.body ?? {});
+
+      if (!provider.success) {
+        return reply.status(400).send({
+          code: "VALIDATION_ERROR",
+          message: "Invalid integration disconnect request.",
+          correlationId: request.correlationId,
+          details: provider.error.flatten(),
+        });
+      }
+
+      if (!parsed.success) {
+        return reply.status(400).send({
+          code: "VALIDATION_ERROR",
+          message: "Invalid integration disconnect request.",
+          correlationId: request.correlationId,
+          details: parsed.error.flatten(),
+        });
+      }
+
+      const useCase = new DisconnectIntegrationUseCase(getPrismaClient());
+
+      try {
+        const response = await useCase.execute({
+          provider: provider.data,
+          reason: parsed.data.reason,
+          correlationId: request.correlationId,
+          founderSession: request.founderSession,
+        });
+
+        request.log.info(
+          {
+            connectionId: response.connection.id,
+            provider: response.connection.provider,
+            correlationId: response.correlationId,
+          },
+          "Integration connection disconnected",
+        );
+
+        return reply.status(200).send(response);
+      } catch (error) {
+        request.log.error(
+          {
+            provider: request.params.provider,
+            correlationId: request.correlationId,
+            error,
+          },
+          "Failed to disconnect integration",
+        );
+
+        return sendError(reply, error, request.correlationId);
+      }
+    },
+  );
+
+  server.post<{ Params: { provider: string } }>(
+    "/api/v1/integrations/:provider/reconnect",
+    async (request, reply) => {
+      const provider = integrationProviderSchema.safeParse(request.params.provider);
+
+      if (!provider.success) {
+        return reply.status(400).send({
+          code: "VALIDATION_ERROR",
+          message: "Invalid integration provider.",
+          correlationId: request.correlationId,
+          details: provider.error.flatten(),
+        });
+      }
+
+      const useCase = new ReconnectIntegrationUseCase(getPrismaClient());
+
+      try {
+        const response = await useCase.execute({
+          provider: provider.data,
+          correlationId: request.correlationId,
+          founderSession: request.founderSession,
+        });
+
+        request.log.info(
+          {
+            connectionId: response.connection.id,
+            provider: response.connection.provider,
+            correlationId: response.correlationId,
+          },
+          "Integration connection reconnected",
+        );
+
+        return reply.status(200).send(response);
+      } catch (error) {
+        request.log.error(
+          {
+            provider: request.params.provider,
+            correlationId: request.correlationId,
+            error,
+          },
+          "Failed to reconnect integration",
+        );
+
+        return sendError(reply, error, request.correlationId);
+      }
+    },
+  );
+
+  server.post("/api/v1/integrations/github/credentials/rotate", async (request, reply) => {
+    const parsed = rotateGitHubCredentialRequestSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      return reply.status(400).send({
+        code: "VALIDATION_ERROR",
+        message: "Invalid GitHub credential rotation request.",
+        correlationId: request.correlationId,
+        details: parsed.error.flatten(),
+      });
+    }
+
+    const useCase = new RotateGitHubCredentialUseCase(getPrismaClient());
+
+    try {
+      const response = await useCase.execute({
+        request: parsed.data,
+        correlationId: request.correlationId,
+        founderSession: request.founderSession,
+      });
+
+      request.log.info(
+        {
+          connectionId: response.connection.id,
+          provider: response.connection.provider,
+          rotatedAt: response.rotatedAt,
+          correlationId: response.correlationId,
+        },
+        "Integration credential rotated",
+      );
+
+      return reply.status(200).send(response);
+    } catch (error) {
+      request.log.error(
+        {
+          correlationId: request.correlationId,
+          error,
+        },
+        "Failed to rotate GitHub credential",
       );
 
       return sendError(reply, error, request.correlationId);

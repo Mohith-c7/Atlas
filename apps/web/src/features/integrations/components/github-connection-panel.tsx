@@ -1,12 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 
 import { IntegrationApiError } from "../types/integration";
 import {
   useConnectGitHubIntegration,
+  useDisconnectIntegration,
   useIntegrationConnections,
+  useReconnectIntegration,
+  useRotateGitHubCredential,
   useStartGitHubOAuth,
 } from "../hooks/use-integration-connections";
 import { githubOAuthCallbackUrl } from "../../../lib/config";
@@ -24,6 +27,9 @@ function formatError(error: Error) {
 export function GitHubConnectionPanel() {
   const connections = useIntegrationConnections();
   const connectGitHub = useConnectGitHubIntegration();
+  const disconnectIntegration = useDisconnectIntegration();
+  const reconnectIntegration = useReconnectIntegration();
+  const rotateGitHubCredential = useRotateGitHubCredential();
   const startGitHubOAuth = useStartGitHubOAuth();
   const githubConnection = connections.data?.connections.find(
     (connection) => connection.provider === "github",
@@ -34,6 +40,17 @@ export function GitHubConnectionPanel() {
   const [accountLabel, setAccountLabel] = useState(githubConnection?.accountLabel ?? "");
   const [accessToken, setAccessToken] = useState("");
   const [showManualToken, setShowManualToken] = useState(false);
+  const [disconnectReason, setDisconnectReason] = useState("");
+
+  useEffect(() => {
+    if (!githubConnection) {
+      return;
+    }
+
+    setOwner(githubConnection.metadata?.owner ?? "");
+    setRepo(githubConnection.metadata?.repo ?? "");
+    setAccountLabel(githubConnection.accountLabel ?? "");
+  }, [githubConnection]);
 
   const canSubmit =
     owner.trim().length > 0 &&
@@ -42,6 +59,18 @@ export function GitHubConnectionPanel() {
     !connectGitHub.isPending;
   const canStartOAuth =
     owner.trim().length > 0 && repo.trim().length > 0 && !startGitHubOAuth.isPending;
+  const canDisconnect =
+    Boolean(githubConnection) &&
+    githubConnection?.status !== "disconnected" &&
+    !disconnectIntegration.isPending;
+  const canReconnect =
+    githubConnection?.status === "disconnected" && !reconnectIntegration.isPending;
+  const canRotate =
+    Boolean(githubConnection) &&
+    owner.trim().length > 0 &&
+    repo.trim().length > 0 &&
+    accessToken.trim().length > 0 &&
+    !rotateGitHubCredential.isPending;
 
   const errorMessage = useMemo(() => {
     if (connectGitHub.error) {
@@ -52,12 +81,31 @@ export function GitHubConnectionPanel() {
       return formatError(startGitHubOAuth.error);
     }
 
+    if (disconnectIntegration.error) {
+      return formatError(disconnectIntegration.error);
+    }
+
+    if (reconnectIntegration.error) {
+      return formatError(reconnectIntegration.error);
+    }
+
+    if (rotateGitHubCredential.error) {
+      return formatError(rotateGitHubCredential.error);
+    }
+
     if (connections.error) {
       return formatError(connections.error);
     }
 
     return undefined;
-  }, [connectGitHub.error, connections.error, startGitHubOAuth.error]);
+  }, [
+    connectGitHub.error,
+    connections.error,
+    disconnectIntegration.error,
+    reconnectIntegration.error,
+    rotateGitHubCredential.error,
+    startGitHubOAuth.error,
+  ]);
 
   function handleOAuthStart() {
     if (!canStartOAuth) {
@@ -102,6 +150,46 @@ export function GitHubConnectionPanel() {
     );
   }
 
+  function handleDisconnect() {
+    if (!canDisconnect) {
+      return;
+    }
+
+    disconnectIntegration.mutate({
+      provider: "github",
+      reason: disconnectReason.trim() || undefined,
+    });
+  }
+
+  function handleReconnect() {
+    if (!canReconnect) {
+      return;
+    }
+
+    reconnectIntegration.mutate("github");
+  }
+
+  function handleRotateCredential() {
+    if (!canRotate) {
+      return;
+    }
+
+    rotateGitHubCredential.mutate(
+      {
+        accountLabel: accountLabel.trim() || undefined,
+        owner: owner.trim(),
+        repo: repo.trim(),
+        accessToken: accessToken.trim(),
+        reason: "manual_rotation",
+      },
+      {
+        onSuccess: () => {
+          setAccessToken("");
+        },
+      },
+    );
+  }
+
   return (
     <section className="rounded-lg border border-border bg-white p-4 shadow-sm sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -121,6 +209,46 @@ export function GitHubConnectionPanel() {
             {githubConnection.metadata?.owner}/{githubConnection.metadata?.repo}
           </p>
           <p className="mt-1">{githubConnection.capabilityKeys.join(", ")}</p>
+          {githubConnection.statusReason ? (
+            <p className="mt-1 text-red-700">{githubConnection.statusReason}</p>
+          ) : null}
+          {githubConnection.connectedAt ? (
+            <p className="mt-1">
+              Connected {new Date(githubConnection.connectedAt).toLocaleString()}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {githubConnection ? (
+        <div className="mt-4 grid gap-3">
+          <label className="grid gap-1.5 text-sm font-medium text-foreground">
+            Disconnect reason
+            <input
+              className="min-h-10 rounded-md border border-border bg-background px-3 text-sm outline-none transition focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10"
+              onChange={(event) => setDisconnectReason(event.target.value)}
+              placeholder="Temporarily pausing GitHub actions"
+              value={disconnectReason}
+            />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <button
+              className="inline-flex min-h-10 items-center justify-center rounded-md border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={!canDisconnect}
+              onClick={handleDisconnect}
+              type="button"
+            >
+              {disconnectIntegration.isPending ? "Disconnecting..." : "Disconnect"}
+            </button>
+            <button
+              className="inline-flex min-h-10 items-center justify-center rounded-md border border-border bg-background px-4 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={!canReconnect}
+              onClick={handleReconnect}
+              type="button"
+            >
+              {reconnectIntegration.isPending ? "Reconnecting..." : "Reconnect"}
+            </button>
+          </div>
         </div>
       ) : null}
 
@@ -194,6 +322,17 @@ export function GitHubConnectionPanel() {
             >
               {connectGitHub.isPending ? "Connecting..." : "Connect with token"}
             </button>
+
+            {githubConnection ? (
+              <button
+                className="inline-flex min-h-10 items-center justify-center rounded-md border border-border bg-background px-4 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={!canRotate}
+                onClick={handleRotateCredential}
+                type="button"
+              >
+                {rotateGitHubCredential.isPending ? "Rotating..." : "Rotate token"}
+              </button>
+            ) : null}
           </>
         ) : null}
       </form>

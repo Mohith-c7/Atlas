@@ -13,6 +13,8 @@ type IntegrationConnectionRecord = Awaited<
   ReturnType<PrismaClient["integrationConnection"]["findMany"]>
 >[number];
 
+type LifecycleEventType = "connected" | "disconnected" | "reconnected" | "credential_rotated";
+
 function isIntegrationProvider(value: string): value is IntegrationProvider {
   return value === "github";
 }
@@ -48,8 +50,14 @@ function toContractConnection(
     provider: connection.provider,
     accountLabel: connection.accountLabel,
     status: isConnectionStatus(connection.status) ? connection.status : "disabled",
+    statusReason: connection.statusReason,
     capabilityKeys: connection.capabilityKeys,
     metadata: normalizeMetadata(connection.metadata),
+    connectedAt: connection.connectedAt?.toISOString(),
+    disconnectedAt: connection.disconnectedAt?.toISOString(),
+    lastHealthStatus: connection.lastHealthStatus,
+    lastHealthCheckedAt: connection.lastHealthCheckedAt?.toISOString(),
+    lastHealthMessage: connection.lastHealthMessage,
     createdAt: connection.createdAt.toISOString(),
     updatedAt: connection.updatedAt.toISOString(),
   };
@@ -76,6 +84,11 @@ export class IntegrationConnectionRepository {
   public async upsertGitHubConnection(
     founderId: string,
     request: GitHubIntegrationConnectionRequest,
+    options: {
+      readonly eventType?: LifecycleEventType;
+      readonly reason?: string;
+      readonly rotatedAt?: Date;
+    } = {},
   ): Promise<IntegrationConnectionContract> {
     const metadata = {
       owner: request.owner,
@@ -83,6 +96,7 @@ export class IntegrationConnectionRepository {
       apiBaseUrl: request.apiBaseUrl,
     };
     const accountLabel = request.accountLabel ?? `${request.owner}/${request.repo}`;
+    const connectedAt = new Date();
 
     const connection = await this.database.integrationConnection.upsert({
       where: {
@@ -96,25 +110,194 @@ export class IntegrationConnectionRepository {
         provider: "github",
         accountLabel,
         status: "connected",
+        statusReason: null,
         capabilityKeys: [...githubCapabilityKeys],
         metadata,
+        connectedAt,
+        disconnectedAt: null,
       },
       update: {
         accountLabel,
         status: "connected",
+        statusReason: null,
         capabilityKeys: [...githubCapabilityKeys],
         metadata,
+        connectedAt,
+        disconnectedAt: null,
       },
     });
 
-    await new CredentialVaultRepository(this.database).upsertIntegrationCredential(connection.id, {
-      accessToken: request.accessToken,
-      owner: request.owner,
-      repo: request.repo,
-      apiBaseUrl: request.apiBaseUrl,
+    await new CredentialVaultRepository(this.database).upsertIntegrationCredential(
+      connection.id,
+      {
+        accessToken: request.accessToken,
+        owner: request.owner,
+        repo: request.repo,
+        apiBaseUrl: request.apiBaseUrl,
+      },
+      {
+        rotatedAt: options.rotatedAt,
+        rotationReason: options.reason,
+      },
+    );
+
+    await this.recordLifecycleEvent({
+      founderId,
+      integrationId: connection.id,
+      provider: "github",
+      eventType: options.eventType ?? "connected",
+      reason: options.reason,
+      metadata,
     });
 
     return toContractConnection(connection);
+  }
+
+  public async getConnectionByFounderAndProvider(
+    founderId: string,
+    provider: IntegrationProvider,
+  ): Promise<IntegrationConnectionContract | undefined> {
+    const connection = await this.database.integrationConnection.findUnique({
+      where: {
+        founderId_provider: {
+          founderId,
+          provider,
+        },
+      },
+    });
+
+    return connection ? toContractConnection(connection) : undefined;
+  }
+
+  public async disconnectConnection(input: {
+    readonly founderId: string;
+    readonly provider: IntegrationProvider;
+    readonly reason?: string;
+  }): Promise<IntegrationConnectionContract | undefined> {
+    const existing = await this.database.integrationConnection.findUnique({
+      where: {
+        founderId_provider: {
+          founderId: input.founderId,
+          provider: input.provider,
+        },
+      },
+    });
+
+    if (!existing) {
+      return undefined;
+    }
+
+    const disconnectedAt = new Date();
+    const connection = await this.database.integrationConnection.update({
+      where: {
+        founderId_provider: {
+          founderId: input.founderId,
+          provider: input.provider,
+        },
+      },
+      data: {
+        status: "disconnected",
+        statusReason: input.reason,
+        disconnectedAt,
+      },
+    });
+
+    await this.recordLifecycleEvent({
+      founderId: input.founderId,
+      integrationId: connection.id,
+      provider: input.provider,
+      eventType: "disconnected",
+      reason: input.reason,
+    });
+
+    return toContractConnection(connection);
+  }
+
+  public async reconnectConnection(input: {
+    readonly founderId: string;
+    readonly provider: IntegrationProvider;
+  }): Promise<IntegrationConnectionContract | undefined> {
+    const existing = await this.database.integrationConnection.findUnique({
+      where: {
+        founderId_provider: {
+          founderId: input.founderId,
+          provider: input.provider,
+        },
+      },
+      include: {
+        credential: true,
+      },
+    });
+
+    if (!existing || !existing.credential) {
+      return undefined;
+    }
+
+    const connectedAt = new Date();
+    const connection = await this.database.integrationConnection.update({
+      where: {
+        founderId_provider: {
+          founderId: input.founderId,
+          provider: input.provider,
+        },
+      },
+      data: {
+        status: "connected",
+        statusReason: null,
+        connectedAt,
+        disconnectedAt: null,
+      },
+    });
+
+    await this.recordLifecycleEvent({
+      founderId: input.founderId,
+      integrationId: connection.id,
+      provider: input.provider,
+      eventType: "reconnected",
+    });
+
+    return toContractConnection(connection);
+  }
+
+  public async rotateGitHubCredential(input: {
+    readonly founderId: string;
+    readonly request: GitHubIntegrationConnectionRequest;
+    readonly reason?: string;
+  }): Promise<{
+    readonly connection: IntegrationConnectionContract;
+    readonly rotatedAt: Date;
+  }> {
+    const rotatedAt = new Date();
+    const connection = await this.upsertGitHubConnection(input.founderId, input.request, {
+      eventType: "credential_rotated",
+      reason: input.reason,
+      rotatedAt,
+    });
+
+    return {
+      connection,
+      rotatedAt,
+    };
+  }
+
+  private async recordLifecycleEvent(input: {
+    readonly founderId: string;
+    readonly integrationId: string;
+    readonly provider: string;
+    readonly eventType: LifecycleEventType;
+    readonly reason?: string;
+    readonly metadata?: Prisma.InputJsonValue;
+  }): Promise<void> {
+    await this.database.integrationLifecycleEvent.create({
+      data: {
+        founderId: input.founderId,
+        integrationId: input.integrationId,
+        provider: input.provider,
+        eventType: input.eventType,
+        reason: input.reason,
+        metadata: input.metadata,
+      },
+    });
   }
 
   public async createOAuthState(input: {

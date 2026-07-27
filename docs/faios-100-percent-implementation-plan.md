@@ -596,6 +596,36 @@ M10.1 starts the integration lifecycle platform with catalog and provider status
 - `pnpm build`
 - `pnpm --filter @faios/business-api test:integration`
 
+## Sixth Next Implementation Slice
+
+M10.2 adds founder-controlled integration lifecycle transitions and credential rotation.
+
+### M10.2 Checklist
+
+- [x] Add integration lifecycle database fields.
+- [x] Add integration lifecycle audit event model.
+- [x] Add formal Prisma migration.
+- [x] Add shared contracts for disconnect, reconnect, and credential rotation.
+- [x] Add provider disconnect use case and API route.
+- [x] Add provider reconnect use case and API route.
+- [x] Add GitHub credential rotation use case and API route.
+- [x] Persist credential rotation timestamp and reason.
+- [x] Keep encrypted provider credentials out of responses.
+- [x] Add web lifecycle mutations and query invalidation.
+- [x] Add GitHub panel disconnect, reconnect, and token rotation controls.
+- [x] Add runtime integration test for connect, disconnect, reconnect, and rotate.
+
+### M10.2 Completion Gate
+
+- `pnpm --filter @faios/database prisma:generate`
+- Prisma migration deploy validation
+- `pnpm format:check`
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm test`
+- `pnpm build`
+- `pnpm --filter @faios/business-api test:integration`
+
 ## Out Of Scope For V1
 
 - Team workspaces.

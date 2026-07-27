@@ -9,6 +9,8 @@ import {
   type IntegrationConnectionStatus,
   type ListIntegrationConnectionsResponse,
   type ListIntegrationCatalogResponse,
+  type RotateGitHubCredentialRequest,
+  type RotateIntegrationCredentialResponse,
   type StartGitHubOAuthRequest,
   type StartGitHubOAuthResponse,
 } from "../types/integration";
@@ -19,6 +21,7 @@ const INTEGRATION_CONNECTIONS_ENDPOINT = `${businessApiUrl}/api/v1/integrations/
 const INTEGRATION_CATALOG_ENDPOINT = `${businessApiUrl}/api/v1/integrations/catalog`;
 const INTEGRATION_PROVIDERS_ENDPOINT = `${businessApiUrl}/api/v1/integrations/providers`;
 const GITHUB_CONNECTIONS_ENDPOINT = `${businessApiUrl}/api/v1/integrations/github/connections`;
+const GITHUB_CREDENTIAL_ROTATION_ENDPOINT = `${businessApiUrl}/api/v1/integrations/github/credentials/rotate`;
 const GITHUB_OAUTH_START_ENDPOINT = `${businessApiUrl}/api/v1/integrations/github/oauth/start`;
 const connectionStatuses = new Set<IntegrationConnectionStatus>([
   "connected",
@@ -63,8 +66,15 @@ function normalizeConnection(value: unknown): IntegrationConnection | undefined 
     provider: "github",
     accountLabel: typeof value.accountLabel === "string" ? value.accountLabel : null,
     status: value.status,
+    statusReason: typeof value.statusReason === "string" ? value.statusReason : null,
     capabilityKeys: value.capabilityKeys.filter((item): item is string => typeof item === "string"),
     metadata: isRecord(value.metadata) ? value.metadata : undefined,
+    connectedAt: typeof value.connectedAt === "string" ? value.connectedAt : null,
+    disconnectedAt: typeof value.disconnectedAt === "string" ? value.disconnectedAt : null,
+    lastHealthStatus: typeof value.lastHealthStatus === "string" ? value.lastHealthStatus : null,
+    lastHealthCheckedAt:
+      typeof value.lastHealthCheckedAt === "string" ? value.lastHealthCheckedAt : null,
+    lastHealthMessage: typeof value.lastHealthMessage === "string" ? value.lastHealthMessage : null,
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
   };
@@ -225,6 +235,106 @@ export async function connectGitHubIntegration(
     connection,
     correlationId:
       isRecord(payload) && typeof payload.correlationId === "string" ? payload.correlationId : "",
+  };
+}
+
+export async function disconnectIntegration(
+  provider: string,
+  reason?: string,
+): Promise<ConnectIntegrationResponse> {
+  const response = await apiFetch(
+    `${businessApiUrl}/api/v1/integrations/${encodeURIComponent(provider)}/disconnect`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(reason ? { reason } : {}),
+    },
+  );
+  const payload = await readJson(response);
+
+  if (!response.ok) {
+    throwIntegrationError(payload, response.status, "Unable to disconnect integration.");
+  }
+
+  const connection = isRecord(payload) ? normalizeConnection(payload.connection) : undefined;
+
+  if (!connection) {
+    throw new IntegrationApiError({
+      code: "INTEGRATION_RESPONSE_INVALID",
+      message: "Integration disconnect response was invalid.",
+      statusCode: response.status,
+    });
+  }
+
+  return {
+    connection,
+    correlationId:
+      isRecord(payload) && typeof payload.correlationId === "string" ? payload.correlationId : "",
+  };
+}
+
+export async function reconnectIntegration(provider: string): Promise<ConnectIntegrationResponse> {
+  const response = await apiFetch(
+    `${businessApiUrl}/api/v1/integrations/${encodeURIComponent(provider)}/reconnect`,
+    {
+      method: "POST",
+    },
+  );
+  const payload = await readJson(response);
+
+  if (!response.ok) {
+    throwIntegrationError(payload, response.status, "Unable to reconnect integration.");
+  }
+
+  const connection = isRecord(payload) ? normalizeConnection(payload.connection) : undefined;
+
+  if (!connection) {
+    throw new IntegrationApiError({
+      code: "INTEGRATION_RESPONSE_INVALID",
+      message: "Integration reconnect response was invalid.",
+      statusCode: response.status,
+    });
+  }
+
+  return {
+    connection,
+    correlationId:
+      isRecord(payload) && typeof payload.correlationId === "string" ? payload.correlationId : "",
+  };
+}
+
+export async function rotateGitHubCredential(
+  request: RotateGitHubCredentialRequest,
+): Promise<RotateIntegrationCredentialResponse> {
+  const response = await apiFetch(GITHUB_CREDENTIAL_ROTATION_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+  const payload = await readJson(response);
+
+  if (!response.ok) {
+    throwIntegrationError(payload, response.status, "Unable to rotate GitHub credential.");
+  }
+
+  const connection = isRecord(payload) ? normalizeConnection(payload.connection) : undefined;
+
+  if (!connection || !isRecord(payload) || typeof payload.rotatedAt !== "string") {
+    throw new IntegrationApiError({
+      code: "INTEGRATION_RESPONSE_INVALID",
+      message: "Credential rotation response was invalid.",
+      statusCode: response.status,
+    });
+  }
+
+  return {
+    connection,
+    rotatedAt: payload.rotatedAt,
+    correlationId: typeof payload.correlationId === "string" ? payload.correlationId : "",
   };
 }
 

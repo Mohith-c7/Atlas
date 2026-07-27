@@ -3,15 +3,35 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   connectGitHubIntegration,
+  disconnectIntegration,
   getIntegrationProviderStatus,
   listIntegrationCatalog,
   listIntegrationConnections,
+  reconnectIntegration,
+  rotateGitHubCredential,
   startGitHubOAuth,
 } from "../api/integrations-api";
 import type {
   ConnectGitHubIntegrationRequest,
+  RotateGitHubCredentialRequest,
   StartGitHubOAuthRequest,
 } from "../types/integration";
+
+async function invalidateIntegrationState(
+  queryClient: ReturnType<typeof useQueryClient>,
+  provider?: string,
+) {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["integrations", "connections"] }),
+    queryClient.invalidateQueries({ queryKey: ["integrations", "catalog"] }),
+    provider
+      ? queryClient.invalidateQueries({
+          queryKey: ["integrations", "providers", provider, "status"],
+        })
+      : Promise.resolve(),
+    queryClient.invalidateQueries({ queryKey: ["mcp", "capabilities"] }),
+  ]);
+}
 
 export function useIntegrationConnections() {
   return useQuery({
@@ -44,8 +64,41 @@ export function useConnectGitHubIntegration() {
   return useMutation({
     mutationFn: (request: ConnectGitHubIntegrationRequest) => connectGitHubIntegration(request),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["integrations", "connections"] });
-      await queryClient.invalidateQueries({ queryKey: ["mcp", "capabilities"] });
+      await invalidateIntegrationState(queryClient, "github");
+    },
+  });
+}
+
+export function useDisconnectIntegration() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ provider, reason }: { provider: string; reason?: string }) =>
+      disconnectIntegration(provider, reason),
+    onSuccess: async (response) => {
+      await invalidateIntegrationState(queryClient, response.connection.provider);
+    },
+  });
+}
+
+export function useReconnectIntegration() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (provider: string) => reconnectIntegration(provider),
+    onSuccess: async (response) => {
+      await invalidateIntegrationState(queryClient, response.connection.provider);
+    },
+  });
+}
+
+export function useRotateGitHubCredential() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request: RotateGitHubCredentialRequest) => rotateGitHubCredential(request),
+    onSuccess: async () => {
+      await invalidateIntegrationState(queryClient, "github");
     },
   });
 }
