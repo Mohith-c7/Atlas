@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { commandExecutionsQueryKey } from "@/features/executions";
 import { approveRequest, listApprovals, rejectRequest } from "../api/approvals-api";
 
 export const approvalsQueryKey = ["approvals", "pending"] as const;
@@ -21,6 +22,7 @@ export function useApproveRequest() {
     mutationFn: approveRequest,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: approvalsQueryKey });
+      await queryClient.invalidateQueries({ queryKey: commandExecutionsQueryKey });
     },
   });
 }
@@ -32,6 +34,7 @@ export function useRejectRequest() {
     mutationFn: rejectRequest,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: approvalsQueryKey });
+      await queryClient.invalidateQueries({ queryKey: commandExecutionsQueryKey });
     },
   });
 }

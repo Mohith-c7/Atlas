@@ -3,8 +3,27 @@ import { getPrismaClient } from "@faios/database";
 import type { FastifyPluginCallback } from "fastify";
 import { sendError } from "../../../lib/errors.js";
 import { CreateCommandUseCase } from "../application/create-command.use-case.js";
+import { ListCommandExecutionsUseCase } from "../application/list-command-executions.use-case.js";
 
 export const commandRoutes: FastifyPluginCallback = (server, _options, done) => {
+  server.get("/api/v1/commands/executions", async (request, reply) => {
+    const useCase = new ListCommandExecutionsUseCase(getPrismaClient());
+
+    try {
+      return reply.status(200).send(await useCase.execute());
+    } catch (error) {
+      request.log.error(
+        {
+          correlationId: request.correlationId,
+          error,
+        },
+        "Failed to list command executions",
+      );
+
+      return sendError(reply, error, request.correlationId);
+    }
+  });
+
   server.post("/api/v1/commands", async (request, reply) => {
     const parsed = createCommandRequestSchema.safeParse(request.body);
 

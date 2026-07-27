@@ -1,5 +1,6 @@
 import { CommandComposer } from "@/features/commands";
 import { ApprovalPanel } from "@/features/approvals";
+import { ExecutionTimelinePanel } from "@/features/executions";
 import { CapabilityReadinessPanel } from "@/features/mcp";
 
 export default function HomePage() {
@@ -37,6 +38,7 @@ export default function HomePage() {
           <CapabilityReadinessPanel />
           <CommandComposer />
           <ApprovalPanel />
+          <ExecutionTimelinePanel />
         </div>
       </section>
     </main>

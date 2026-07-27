@@ -129,6 +129,20 @@ export const executionJobSchema = z.object({
   requestPayload: z.unknown().optional(),
 });
 
+export const commandExecutionTimelineItemSchema = z.object({
+  commandId: z.string(),
+  status: commandStatusSchema,
+  summary: z.string().nullable().optional(),
+  rawInput: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  invocations: z.array(toolInvocationSchema),
+});
+
+export const listCommandExecutionsResponseSchema = z.object({
+  executions: z.array(commandExecutionTimelineItemSchema),
+});
+
 export const apiErrorSchema = z.object({
   code: z.string(),
   message: z.string(),
@@ -147,12 +161,14 @@ export type ApprovalRequest = z.infer<typeof approvalRequestSchema>;
 export type ApprovalStatus = z.infer<typeof approvalStatusSchema>;
 export type CommandSource = z.infer<typeof commandSourceSchema>;
 export type CommandStatus = z.infer<typeof commandStatusSchema>;
+export type CommandExecutionTimelineItem = z.infer<typeof commandExecutionTimelineItemSchema>;
 export type CreateCommandRequest = z.infer<typeof createCommandRequestSchema>;
 export type CreateCommandResponse = z.infer<typeof createCommandResponseSchema>;
 export type ExecutionPlan = z.infer<typeof executionPlanSchema>;
 export type ExecutionStep = z.infer<typeof executionStepSchema>;
 export type ExecutionJob = z.infer<typeof executionJobSchema>;
 export type ListCapabilitiesResponse = z.infer<typeof listCapabilitiesResponseSchema>;
+export type ListCommandExecutionsResponse = z.infer<typeof listCommandExecutionsResponseSchema>;
 export type ListApprovalsResponse = z.infer<typeof listApprovalsResponseSchema>;
 export type McpCapability = z.infer<typeof mcpCapabilitySchema>;
 export type McpCapabilityStatus = z.infer<typeof mcpCapabilityStatusSchema>;
