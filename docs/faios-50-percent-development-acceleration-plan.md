@@ -171,6 +171,6 @@ Each completed implementation slice must:
 - [x] LangGraph planner foundation exists.
 - [x] Memory write/read foundation exists.
 - [x] Realtime execution updates exist.
-- [ ] Voice input foundation exists.
+- [x] Voice input foundation exists.
 - [ ] Observability and readiness endpoints exist.
 - [ ] CI validates critical runtime paths.

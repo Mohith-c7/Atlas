@@ -113,6 +113,19 @@ export const createCommandRequestSchema = z.object({
   input: z.string().min(1).max(8000),
 });
 
+export const voiceTranscriptionRequestSchema = z.object({
+  audioBase64: z.string().min(1),
+  mimeType: z.string().min(1).max(120),
+  language: z.string().min(2).max(20).optional(),
+  correlationId: z.string().min(1),
+});
+
+export const voiceTranscriptionResponseSchema = z.object({
+  transcript: z.string().min(1),
+  confidence: z.number().min(0).max(1).nullable().optional(),
+  correlationId: z.string(),
+});
+
 export const memoryContextItemSchema = z.object({
   id: z.string(),
   kind: memoryKindSchema,
@@ -313,6 +326,8 @@ export type PlanCommandRequest = z.infer<typeof planCommandRequestSchema>;
 export type PlanCommandResponse = z.infer<typeof planCommandResponseSchema>;
 export type ToolInvocation = z.infer<typeof toolInvocationSchema>;
 export type ToolInvocationStatus = z.infer<typeof toolInvocationStatusSchema>;
+export type VoiceTranscriptionRequest = z.infer<typeof voiceTranscriptionRequestSchema>;
+export type VoiceTranscriptionResponse = z.infer<typeof voiceTranscriptionResponseSchema>;
 
 export const aiCommandRequestSchema = planCommandRequestSchema;
 export type AiCommandRequest = PlanCommandRequest;
