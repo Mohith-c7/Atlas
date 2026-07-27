@@ -11,6 +11,7 @@ from faios_ai_orchestrator.features.planning.model_provider import (
     UnconfiguredPlannerModelProvider,
 )
 from faios_ai_orchestrator.features.planning.planner import create_mock_plan
+from faios_ai_orchestrator.features.planning.repair import repair_or_fallback_plan
 from faios_ai_orchestrator.features.planning.schemas import PlanRequest, PlanResponse
 
 try:
@@ -71,8 +72,10 @@ class PlanningGraph:
         candidate = state.get("provider_candidate")
 
         if candidate is not None:
-            parsed = PlanResponse.model_validate(candidate)
-            response = attach_capability_context(parsed, request.available_capabilities)
+            repair_result = repair_or_fallback_plan(candidate, request)
+            response = attach_capability_context(
+                repair_result.response, request.available_capabilities
+            )
             return {**state, "response": response}
 
         return {**state, "response": self._fallback_response(request)}

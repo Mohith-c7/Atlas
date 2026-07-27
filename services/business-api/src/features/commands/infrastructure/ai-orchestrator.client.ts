@@ -8,10 +8,13 @@ import { AppError } from "../../../lib/errors.js";
 export class AiOrchestratorClient {
   public constructor(
     private readonly baseUrl = process.env.AI_ORCHESTRATOR_URL ?? "http://localhost:8000",
+    private readonly timeoutMs = Number(process.env.AI_ORCHESTRATOR_TIMEOUT_MS ?? "15000"),
   ) {}
 
   public async planCommand(request: PlanCommandRequest): Promise<PlanCommandResponse> {
     let response: Response;
+    const abortController = new AbortController();
+    const timeout = setTimeout(() => abortController.abort(), this.timeoutMs);
 
     try {
       response = await fetch(`${this.baseUrl}/internal/v1/commands/plan`, {
@@ -21,11 +24,14 @@ export class AiOrchestratorClient {
           "x-correlation-id": request.correlationId,
         },
         body: JSON.stringify(request),
+        signal: abortController.signal,
       });
     } catch (error) {
       throw new AppError("AI_ORCHESTRATOR_UNAVAILABLE", "AI Orchestrator is unavailable.", 503, {
         cause: error instanceof Error ? error.message : "unknown",
       });
+    } finally {
+      clearTimeout(timeout);
     }
 
     if (!response.ok) {

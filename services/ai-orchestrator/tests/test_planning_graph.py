@@ -52,6 +52,16 @@ class UnavailableProvider:
         return None
 
 
+class InvalidCandidateProvider:
+    async def create_plan_candidate(self, request: PlanRequest) -> dict[str, object]:
+        return {
+            "commandId": request.command_id,
+            "status": "completed",
+            "summary": "",
+            "steps": [],
+        }
+
+
 @pytest.mark.asyncio
 async def test_planning_graph_uses_deterministic_fallback_when_provider_unavailable() -> None:
     response = await PlanningGraph(UnavailableProvider()).plan(
@@ -74,3 +84,15 @@ async def test_planning_graph_enforces_approval_policy_on_provider_candidate() -
     assert response.steps[0].requires_approval is True
     assert response.steps[0].execution_payload
     assert response.steps[0].execution_payload["title"] == "Provider generated issue"
+
+
+@pytest.mark.asyncio
+async def test_planning_graph_falls_back_when_provider_candidate_is_invalid() -> None:
+    response = await PlanningGraph(InvalidCandidateProvider()).plan(
+        make_request("Create a GitHub issue for the onboarding bug")
+    )
+
+    assert response.status == "awaiting_approval"
+    assert response.steps[0].capability == "repository.createIssue"
+    assert response.steps[0].execution_payload
+    assert response.steps[0].execution_payload["title"] == "the onboarding bug"

@@ -686,6 +686,36 @@ M10.4 completes founder-facing GitHub OAuth result handling and hardens callback
 - `pnpm build`
 - `pnpm --filter @faios/business-api test:integration`
 
+## Ninth Next Implementation Slice
+
+M11.1 adds model-routing and structured-output safety while preserving deterministic fallback.
+
+### M11.1 Checklist
+
+- [x] Add typed AI orchestrator planner configuration.
+- [x] Add model provider routing with timeout, retry, and ordered fallback.
+- [x] Add OpenAI provider boundary.
+- [x] Add Anthropic provider boundary.
+- [x] Add Gemini provider boundary.
+- [x] Add versioned planner prompt registry.
+- [x] Add structured JSON output validation helper.
+- [x] Add deterministic repair-or-fallback boundary.
+- [x] Ensure invalid model output cannot bypass `PlanResponse` validation.
+- [x] Wire FastAPI planning route to the configured model router.
+- [x] Preserve deterministic fallback when providers are unavailable.
+- [x] Add business API AI-orchestrator request timeout.
+- [x] Add model routing and invalid-output regression tests.
+
+### M11.1 Completion Gate
+
+- `python -m ruff check .`
+- `python -m pytest`
+- `pnpm format:check`
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm test`
+- `pnpm build`
+
 ## Out Of Scope For V1
 
 - Team workspaces.
