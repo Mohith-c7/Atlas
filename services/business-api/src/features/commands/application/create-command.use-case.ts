@@ -1,14 +1,16 @@
 import type { CreateCommandRequest, CreateCommandResponse } from "@faios/contracts";
 import type { PrismaClient } from "@faios/database";
 import { AppError } from "../../../lib/errors.js";
+import type { FounderSession } from "../../../lib/founder-session.js";
 import { CapabilityRegistry } from "../../mcp-capabilities/index.js";
 import { AiOrchestratorClient } from "../infrastructure/ai-orchestrator.client.js";
 import { CommandRepository } from "../infrastructure/command.repository.js";
-import { resolveDevelopmentFounder } from "../infrastructure/founder-resolver.js";
+import { resolveFounderAccount } from "../infrastructure/founder-resolver.js";
 
 type CreateCommandUseCaseInput = {
   request: CreateCommandRequest;
   correlationId: string;
+  founderSession?: FounderSession;
 };
 
 export class CreateCommandUseCase {
@@ -23,7 +25,7 @@ export class CreateCommandUseCase {
   }
 
   public async execute(input: CreateCommandUseCaseInput): Promise<CreateCommandResponse> {
-    const founder = await resolveDevelopmentFounder(this.database);
+    const founder = await resolveFounderAccount(this.database, input.founderSession);
     const record = await this.repository.createCommandRecord({
       founderId: founder.id,
       conversationId: input.request.conversationId,

@@ -1,15 +1,21 @@
 import type { PrismaClient } from "@faios/database";
+import type { FounderSession } from "../../../lib/founder-session.js";
 
-export const resolveDevelopmentFounder = async (database: PrismaClient) => {
-  const founderId = process.env.DEV_FOUNDER_ID ?? "dev_founder";
-  const founderEmail = process.env.DEV_FOUNDER_EMAIL ?? "founder@faios.local";
+export const resolveFounderAccount = async (
+  database: PrismaClient,
+  founderSession?: FounderSession,
+) => {
+  const founderId = founderSession?.founderId ?? process.env.DEV_FOUNDER_ID ?? "dev_founder";
+  const founderEmail =
+    founderSession?.email ?? process.env.DEV_FOUNDER_EMAIL ?? "founder@faios.local";
+  const displayName = founderSession?.displayName ?? "Development Founder";
 
   return database.founderAccount.upsert({
     where: { id: founderId },
     create: {
       id: founderId,
       email: founderEmail,
-      displayName: "Development Founder",
+      displayName,
       profile: {
         create: {
           timezone: process.env.DEV_FOUNDER_TIMEZONE ?? "UTC",
@@ -28,3 +34,6 @@ export const resolveDevelopmentFounder = async (database: PrismaClient) => {
     update: {},
   });
 };
+
+export const resolveDevelopmentFounder = async (database: PrismaClient) =>
+  resolveFounderAccount(database);

@@ -4,7 +4,8 @@ import type {
 } from "@faios/contracts";
 import type { PrismaClient } from "@faios/database";
 import { AppError } from "../../../lib/errors.js";
-import { resolveDevelopmentFounder } from "../../commands/infrastructure/founder-resolver.js";
+import type { FounderSession } from "../../../lib/founder-session.js";
+import { resolveFounderAccount } from "../../commands/infrastructure/founder-resolver.js";
 import { IntegrationConnectionRepository } from "../infrastructure/integration-connection.repository.js";
 
 export class ConnectGitHubIntegrationUseCase {
@@ -17,9 +18,10 @@ export class ConnectGitHubIntegrationUseCase {
   public async execute(
     request: GitHubIntegrationConnectionRequest,
     correlationId: string,
+    founderSession?: FounderSession,
   ): Promise<ConnectIntegrationResponse> {
     try {
-      const founder = await resolveDevelopmentFounder(this.database);
+      const founder = await resolveFounderAccount(this.database, founderSession);
       const connection = await this.repository.upsertGitHubConnection(founder.id, request);
 
       return {

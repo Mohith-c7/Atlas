@@ -166,7 +166,7 @@ Each completed implementation slice must:
 ## 50 Percent Acceptance Checklist
 
 - [x] GitHub command runs end-to-end through local smoke.
-- [ ] Founder identity boundary exists.
+- [x] Founder identity boundary exists.
 - [ ] GitHub OAuth replaces manual token setup.
 - [ ] LangGraph planner foundation exists.
 - [ ] Memory write/read foundation exists.

@@ -21,7 +21,7 @@ export const approvalRoutes: FastifyPluginCallback = (server, _options, done) =>
     const useCase = new ListApprovalsUseCase(getPrismaClient());
 
     try {
-      return reply.status(200).send(await useCase.execute());
+      return reply.status(200).send(await useCase.execute(request.founderSession));
     } catch (error) {
       request.log.error(
         { correlationId: request.correlationId, error },
@@ -42,6 +42,7 @@ export const approvalRoutes: FastifyPluginCallback = (server, _options, done) =>
           request.params.approvalId,
           "APPROVED",
           request.correlationId,
+          request.founderSession,
         );
         request.log.info(
           {
@@ -73,6 +74,7 @@ export const approvalRoutes: FastifyPluginCallback = (server, _options, done) =>
           request.params.approvalId,
           "REJECTED",
           request.correlationId,
+          request.founderSession,
         );
         request.log.info(
           {

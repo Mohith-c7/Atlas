@@ -2,7 +2,8 @@ import type { ApprovalDecisionResponse } from "@faios/contracts";
 import type { PrismaClient } from "@faios/database";
 import { createLogger } from "@faios/logger";
 import { AppError } from "../../../lib/errors.js";
-import { resolveDevelopmentFounder } from "../../commands/infrastructure/founder-resolver.js";
+import type { FounderSession } from "../../../lib/founder-session.js";
+import { resolveFounderAccount } from "../../commands/infrastructure/founder-resolver.js";
 import { createExecutionDispatcher } from "../infrastructure/execution-dispatcher.js";
 import { ApprovalRepository } from "../infrastructure/approval.repository.js";
 
@@ -21,8 +22,9 @@ export class DecideApprovalUseCase {
     approvalId: string,
     decision: ApprovalDecision,
     correlationId: string,
+    founderSession?: FounderSession,
   ): Promise<ApprovalDecisionResponse> {
-    const founder = await resolveDevelopmentFounder(this.database);
+    const founder = await resolveFounderAccount(this.database, founderSession);
     const result = await this.repository.decideApproval(founder.id, approvalId, decision);
 
     if (!result) {

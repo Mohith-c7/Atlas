@@ -1,6 +1,7 @@
 import type { ListIntegrationConnectionsResponse } from "@faios/contracts";
 import type { PrismaClient } from "@faios/database";
-import { resolveDevelopmentFounder } from "../../commands/infrastructure/founder-resolver.js";
+import type { FounderSession } from "../../../lib/founder-session.js";
+import { resolveFounderAccount } from "../../commands/infrastructure/founder-resolver.js";
 import { IntegrationConnectionRepository } from "../infrastructure/integration-connection.repository.js";
 
 export class ListIntegrationConnectionsUseCase {
@@ -10,8 +11,11 @@ export class ListIntegrationConnectionsUseCase {
     this.repository = new IntegrationConnectionRepository(database);
   }
 
-  public async execute(correlationId: string): Promise<ListIntegrationConnectionsResponse> {
-    const founder = await resolveDevelopmentFounder(this.database);
+  public async execute(
+    correlationId: string,
+    founderSession?: FounderSession,
+  ): Promise<ListIntegrationConnectionsResponse> {
+    const founder = await resolveFounderAccount(this.database, founderSession);
     const connections = await this.repository.listConnections(founder.id);
 
     return {

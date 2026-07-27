@@ -10,7 +10,7 @@ export const commandRoutes: FastifyPluginCallback = (server, _options, done) => 
     const useCase = new ListCommandExecutionsUseCase(getPrismaClient());
 
     try {
-      return reply.status(200).send(await useCase.execute());
+      return reply.status(200).send(await useCase.execute(request.founderSession));
     } catch (error) {
       request.log.error(
         {
@@ -42,6 +42,7 @@ export const commandRoutes: FastifyPluginCallback = (server, _options, done) => 
       const response = await useCase.execute({
         request: parsed.data,
         correlationId: request.correlationId,
+        founderSession: request.founderSession,
       });
 
       request.log.info(

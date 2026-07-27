@@ -10,7 +10,9 @@ export const integrationRoutes: FastifyPluginCallback = (server, _options, done)
     const useCase = new ListIntegrationConnectionsUseCase(getPrismaClient());
 
     try {
-      return reply.status(200).send(await useCase.execute(request.correlationId));
+      return reply
+        .status(200)
+        .send(await useCase.execute(request.correlationId, request.founderSession));
     } catch (error) {
       request.log.error(
         {
@@ -39,7 +41,11 @@ export const integrationRoutes: FastifyPluginCallback = (server, _options, done)
     const useCase = new ConnectGitHubIntegrationUseCase(getPrismaClient());
 
     try {
-      const response = await useCase.execute(parsed.data, request.correlationId);
+      const response = await useCase.execute(
+        parsed.data,
+        request.correlationId,
+        request.founderSession,
+      );
 
       request.log.info(
         {
