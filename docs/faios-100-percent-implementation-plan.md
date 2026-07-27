@@ -786,6 +786,29 @@ M13.1 adds founder-facing memory management with founder-scoped backend boundari
 - `pnpm build`
 - `pnpm --filter @faios/business-api test:integration`
 
+## Thirteenth Next Implementation Slice
+
+M15.1 adds the founder console shell that organizes command, operations, integrations, memory, and settings into a production-facing dashboard.
+
+### M15.1 Checklist
+
+- [x] Replace the single stacked homepage with a dashboard shell.
+- [x] Keep voice and command input as the first-viewport product focus.
+- [x] Add sticky section navigation for repeated founder workflows.
+- [x] Group approvals and execution history into an operations area.
+- [x] Group GitHub connection, integration catalog, and capability readiness into an integrations area.
+- [x] Mount founder memory management in its own dashboard section.
+- [x] Keep account and billing controls in a settings area.
+- [x] Preserve responsive layouts across mobile and wide desktop.
+
+### M15.1 Completion Gate
+
+- `pnpm format:check`
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm test`
+- `pnpm build`
+
 ## Out Of Scope For V1
 
 - Team workspaces.
