@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { IntegrationApiError } from "../types/integration";
 import { useIntegrationCatalog } from "../hooks/use-integration-connections";
+import { useOnlineStatus } from "@/lib/use-online-status";
 
 function formatError(error: Error) {
   if (error instanceof IntegrationApiError) {
@@ -37,6 +38,7 @@ function getCapabilitySummary(integration: {
 
 export function IntegrationCatalogPanel() {
   const catalog = useIntegrationCatalog();
+  const isOnline = useOnlineStatus();
   const errorMessage = useMemo(
     () => (catalog.error ? formatError(catalog.error) : undefined),
     [catalog.error],
@@ -53,6 +55,23 @@ export function IntegrationCatalogPanel() {
           {catalog.data?.integrations.length ?? 0} providers
         </span>
       </div>
+
+      {!isOnline ? (
+        <p className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          Offline. Catalog status may be stale until connectivity returns.
+        </p>
+      ) : null}
+
+      {catalog.isLoading ? (
+        <div className="mt-4 grid gap-2" aria-label="Loading integration catalog">
+          {["github", "gmail", "calendar"].map((provider) => (
+            <div
+              className="h-24 animate-pulse rounded-md border border-border bg-background"
+              key={provider}
+            />
+          ))}
+        </div>
+      ) : null}
 
       <div className="mt-4 grid gap-2">
         {(catalog.data?.integrations ?? []).map((integration) => {
@@ -94,6 +113,12 @@ export function IntegrationCatalogPanel() {
           );
         })}
       </div>
+
+      {!catalog.isLoading && !catalog.error && (catalog.data?.integrations.length ?? 0) === 0 ? (
+        <p className="mt-4 rounded-md border border-border bg-background p-3 text-sm text-muted">
+          No providers are available yet. New MCP adapters will appear here as they are registered.
+        </p>
+      ) : null}
 
       {errorMessage ? (
         <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">

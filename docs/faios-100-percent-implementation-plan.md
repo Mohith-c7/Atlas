@@ -281,8 +281,8 @@ Goal: make the product coherent, fast, and trustworthy for daily founder use.
 
 ### Implementation Checklist
 
-- [ ] Add first-run onboarding.
-- [ ] Add integration setup checklist.
+- [x] Add first-run onboarding.
+- [x] Add integration setup checklist.
 - [x] Add command history page.
 - [x] Add command detail page.
 - [x] Add execution detail page.
@@ -290,13 +290,13 @@ Goal: make the product coherent, fast, and trustworthy for daily founder use.
 - [x] Add approval diff and payload summary views.
 - [ ] Add command retry flow.
 - [ ] Add command cancellation flow.
-- [ ] Add settings page.
-- [ ] Add billing page.
+- [x] Add settings page.
+- [x] Add billing page.
 - [ ] Add memory management page.
-- [ ] Add empty, loading, error, and offline states.
-- [ ] Add responsive layout polish.
-- [ ] Add accessibility pass.
-- [ ] Add keyboard-friendly command input.
+- [x] Add empty, loading, error, and offline states.
+- [x] Add responsive layout polish.
+- [x] Add accessibility pass.
+- [x] Add keyboard-friendly command input.
 - [ ] Add mobile web QA plan.
 
 ### Acceptance Criteria
@@ -311,24 +311,41 @@ Goal: make the platform trustworthy enough for real founder data.
 
 ### Implementation Checklist
 
-- [ ] Write threat model.
-- [ ] Add route-level rate limiting.
-- [ ] Add command-level abuse controls.
-- [ ] Add CORS policy.
+- [x] Write threat model.
+- [x] Add route-level rate limiting.
+- [x] Add command-level abuse controls.
+- [x] Add CORS policy.
 - [ ] Add CSRF protection where cookie auth is used.
 - [ ] Add webhook signature verification for every provider webhook.
-- [ ] Add encrypted secret rotation plan.
+- [x] Add encrypted secret rotation plan.
 - [ ] Add audit log persistence.
-- [ ] Add data retention policy.
+- [x] Add data retention policy.
 - [ ] Add founder data export.
 - [ ] Add founder data deletion.
-- [ ] Add privacy policy implementation checklist.
-- [ ] Add security headers.
-- [ ] Add dependency vulnerability scanning.
+- [x] Add privacy policy implementation checklist.
+- [x] Add security headers.
+- [x] Add dependency vulnerability scanning.
 - [ ] Add container scanning.
 - [ ] Add secret scanning.
-- [ ] Add access logging with redaction.
-- [ ] Add production incident response runbook.
+- [x] Add access logging with redaction.
+- [x] Add production incident response runbook.
+
+### M16.1 Business API Security Boundary
+
+M16.1 adds the first production security boundary around the Business API without changing
+founder-facing product behavior. The slice introduces environment-driven CORS, API security
+headers, in-process route rate limiting, stricter command abuse controls, redacted access logs,
+recursive security redaction helpers, dependency vulnerability scanning in CI, and a security,
+privacy, and incident-response runbook.
+
+Validation:
+
+- `pnpm --filter @faios/security lint`
+- `pnpm --filter @faios/security typecheck`
+- `pnpm --filter @faios/business-api lint`
+- `pnpm --filter @faios/business-api typecheck`
+- `pnpm --filter @faios/business-api build`
+- `pnpm --filter @faios/business-api exec tsx src/integration/security-boundary.integration.ts`
 
 ### Acceptance Criteria
 
@@ -343,22 +360,42 @@ Goal: make FAIOS operable under production traffic.
 ### Implementation Checklist
 
 - [ ] Add OpenTelemetry tracing.
-- [ ] Add metrics exporter.
+- [x] Add metrics exporter.
 - [ ] Add structured log correlation across web, API, orchestrator, and workers.
-- [ ] Add dashboard definitions.
-- [ ] Add alert rules.
-- [ ] Add SLO definitions.
+- [x] Add dashboard definitions.
+- [x] Add alert rules.
+- [x] Add SLO definitions.
 - [ ] Add RabbitMQ dead-letter queue handling.
 - [ ] Add retry exhaustion workflow.
 - [ ] Add worker concurrency controls.
 - [ ] Add backpressure controls.
-- [ ] Add database backup plan.
-- [ ] Add database restore drill.
-- [ ] Add Qdrant backup plan.
-- [ ] Add Redis persistence policy.
-- [ ] Add runbooks for provider outage, queue buildup, database outage, and model outage.
-- [ ] Add load testing scenario.
-- [ ] Add failure injection tests.
+- [x] Add database backup plan.
+- [x] Add database restore drill.
+- [x] Add Qdrant backup plan.
+- [x] Add Redis persistence policy.
+- [x] Add runbooks for provider outage, queue buildup, database outage, and model outage.
+- [x] Add load testing scenario.
+- [x] Add failure injection tests.
+
+### M17.1 Observability And Operations Artifacts
+
+M17.1 adds production-operability primitives without changing founder UX or business behavior.
+
+Delivered:
+
+- Shared `@faios/observability` metrics registry and Prometheus text renderer.
+- Business API `/metrics` endpoint with HTTP request counters, duration totals, and process gauges.
+- Optional worker `/metrics` endpoint enabled by `WORKER_METRICS_PORT`.
+- Memory vector worker metrics exported through the worker scrape endpoint.
+- SLO, dashboard, alert, backup, restore, continuity, load-test, and failure-injection documents.
+- Lightweight HTTP load and planned-failure probe scripts.
+
+References:
+
+- [`docs/observability-and-reliability-runbook.md`](observability-and-reliability-runbook.md)
+- [`docs/operations-slos-dashboards-alerts.md`](operations-slos-dashboards-alerts.md)
+- [`docs/backup-restore-and-continuity.md`](backup-restore-and-continuity.md)
+- [`docs/load-and-failure-injection-plan.md`](load-and-failure-injection-plan.md)
 
 ### Acceptance Criteria
 

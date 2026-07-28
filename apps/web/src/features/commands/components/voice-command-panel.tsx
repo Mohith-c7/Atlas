@@ -111,13 +111,14 @@ export function VoiceCommandPanel() {
   const [transcript, setTranscript] = useState("");
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [captureState, setCaptureState] = useState<CaptureState>("idle");
+  const [isClientReady, setIsClientReady] = useState(false);
   const [microphonePermission, setMicrophonePermission] = useState<MicrophonePermission>("unknown");
   const [lastResult, setLastResult] = useState<CreateCommandResponse | undefined>();
   const [voiceError, setVoiceError] = useState<string | undefined>();
   const createCommand = useCreateCommand();
 
-  const speechSupported = Boolean(getSpeechRecognitionConstructor());
-  const recordingSupported = isMediaRecorderSupported();
+  const speechSupported = isClientReady && Boolean(getSpeechRecognitionConstructor());
+  const recordingSupported = isClientReady && isMediaRecorderSupported();
   const captureSupported = speechSupported && recordingSupported;
   const trimmedTranscript = transcript.trim();
   const isRecording = captureState === "recording";
@@ -181,6 +182,8 @@ export function VoiceCommandPanel() {
   }
 
   useEffect(() => {
+    setIsClientReady(true);
+
     return () => stopActiveCapture();
   }, []);
 

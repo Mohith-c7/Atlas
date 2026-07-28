@@ -6,10 +6,12 @@ import { ExecutionTimelinePanel } from "@/features/executions";
 import { GitHubConnectionPanel, IntegrationCatalogPanel } from "@/features/integrations";
 import { MemoryManagementPanel } from "@/features/memory";
 import { CapabilityReadinessPanel } from "@/features/mcp";
+import { FounderOnboardingChecklist } from "./founder-onboarding-checklist";
 import { FounderOperatingSnapshot } from "./founder-operating-snapshot";
 
 const navigationItems = [
   { href: "#command-center", label: "Command" },
+  { href: "#setup", label: "Setup" },
   { href: "#snapshot", label: "Snapshot" },
   { href: "#operations", label: "Operations" },
   { href: "#integrations", label: "Integrations" },
@@ -116,6 +118,10 @@ export function FounderDashboardShell() {
           </div>
 
           <CommandComposer />
+        </section>
+
+        <section className="scroll-mt-28" id="setup">
+          <FounderOnboardingChecklist />
         </section>
 
         <section className="scroll-mt-28" id="snapshot">

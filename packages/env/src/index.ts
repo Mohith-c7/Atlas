@@ -20,9 +20,16 @@ export const serverEnvSchema = z.object({
   WORKER_MEMORY_VECTOR_RABBITMQ_CONSUMER_ENABLED: z.coerce.boolean().default(false),
   WORKER_MEMORY_VECTOR_LOOP_ENABLED: z.coerce.boolean().default(false),
   WORKER_MEMORY_VECTOR_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(5000),
+  WORKER_METRICS_PORT: z.coerce.number().int().positive().optional(),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_API_BASE_URL: z.string().url().default("https://api.openai.com/v1"),
   OPENAI_EMBEDDING_MODEL: z.string().min(1).default("text-embedding-3-small"),
+  CORS_ALLOWED_ORIGINS: z.string().optional(),
+  BUSINESS_API_RATE_LIMIT_ENABLED: z.coerce.boolean().default(true),
+  BUSINESS_API_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
+  BUSINESS_API_RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().positive().default(300),
+  BUSINESS_API_COMMAND_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
+  BUSINESS_API_COMMAND_RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().positive().default(20),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

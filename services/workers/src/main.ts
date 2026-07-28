@@ -13,6 +13,7 @@ import { RabbitMqMemoryVectorConsumer } from "./memory-vector/rabbitmq-memory-ve
 import { MemoryVectorPollingLoop } from "./memory-vector/memory-vector-polling-loop.js";
 import { assertMemoryVectorRuntimeReady } from "./memory-vector/memory-vector-runtime-readiness.js";
 import { MemoryVectorJobMetrics } from "./memory-vector/memory-vector-job.metrics.js";
+import { startWorkerMetricsServer } from "./observability/worker-metrics-server.js";
 
 const logger = createLogger("workers");
 const database = getPrismaClient();
@@ -27,6 +28,9 @@ const memoryVectorPollIntervalMs = Number(
   process.env.WORKER_MEMORY_VECTOR_POLL_INTERVAL_MS ?? 5000,
 );
 const memoryVectorRuntimeEnabled = memoryVectorConsumerEnabled || memoryVectorLoopEnabled;
+const workerMetricsPort = process.env.WORKER_METRICS_PORT
+  ? Number(process.env.WORKER_METRICS_PORT)
+  : null;
 
 const worker = new ExecutionWorker(
   new ExecutionRepository(database),
@@ -46,6 +50,18 @@ const memoryVectorWorker = new MemoryVectorWorker(
   undefined,
   memoryVectorMetrics,
 );
+
+if (workerMetricsPort !== null) {
+  if (!Number.isInteger(workerMetricsPort) || workerMetricsPort <= 0) {
+    throw new Error("WORKER_METRICS_PORT must be a positive integer when set.");
+  }
+
+  await startWorkerMetricsServer({
+    port: workerMetricsPort,
+    logger,
+    memoryVectorMetrics,
+  });
+}
 
 if (rabbitMqConsumerEnabled) {
   const rabbitMqUrl = process.env.RABBITMQ_URL;

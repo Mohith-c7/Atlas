@@ -77,6 +77,92 @@ export class MemoryVectorJobMetrics {
   }
 }
 
+export function collectMemoryVectorJobMetrics(
+  registry: {
+    setGauge(name: string, help: string, labels: Record<string, string>, value: number): void;
+  },
+  metrics: MemoryVectorJobMetrics,
+): void {
+  const snapshot = metrics.snapshot();
+  const labels = { runtime: "memory_vector" };
+
+  registry.setGauge(
+    "faios_worker_memory_vector_jobs_processed_total",
+    "Total memory vector jobs processed by outcome.",
+    { ...labels, outcome: "all" },
+    snapshot.processedTotal,
+  );
+  registry.setGauge(
+    "faios_worker_memory_vector_jobs_processed_total",
+    "Total memory vector jobs processed by outcome.",
+    { ...labels, outcome: "succeeded" },
+    snapshot.succeededTotal,
+  );
+  registry.setGauge(
+    "faios_worker_memory_vector_jobs_processed_total",
+    "Total memory vector jobs processed by outcome.",
+    { ...labels, outcome: "retry_scheduled" },
+    snapshot.retryScheduledTotal,
+  );
+  registry.setGauge(
+    "faios_worker_memory_vector_jobs_processed_total",
+    "Total memory vector jobs processed by outcome.",
+    { ...labels, outcome: "failed" },
+    snapshot.failedTotal,
+  );
+  registry.setGauge(
+    "faios_worker_memory_vector_jobs_processed_total",
+    "Total memory vector jobs processed by outcome.",
+    { ...labels, outcome: "skipped" },
+    snapshot.skippedTotal,
+  );
+  registry.setGauge(
+    "faios_worker_memory_vector_dead_lettered_total",
+    "Total memory vector RabbitMQ messages sent to the dead-letter path.",
+    labels,
+    snapshot.deadLetteredTotal,
+  );
+  registry.setGauge(
+    "faios_worker_memory_vector_retry_scheduled_total",
+    "Total memory vector retries scheduled by the worker.",
+    labels,
+    snapshot.retryCountTotal,
+  );
+  registry.setGauge(
+    "faios_worker_memory_vector_provider_latency_ms_total",
+    "Total memory vector provider latency in milliseconds.",
+    labels,
+    snapshot.providerLatencyMsTotal,
+  );
+  registry.setGauge(
+    "faios_worker_memory_vector_provider_latency_samples_total",
+    "Total memory vector provider latency sample count.",
+    labels,
+    snapshot.providerLatencySamples,
+  );
+  registry.setGauge(
+    "faios_worker_memory_vector_processing_latency_ms_total",
+    "Total memory vector job processing latency in milliseconds.",
+    labels,
+    snapshot.processingLatencyMsTotal,
+  );
+  registry.setGauge(
+    "faios_worker_memory_vector_processing_latency_samples_total",
+    "Total memory vector job processing latency sample count.",
+    labels,
+    snapshot.processingLatencySamples,
+  );
+
+  if (snapshot.queueDepth !== null) {
+    registry.setGauge(
+      "faios_worker_memory_vector_queue_depth",
+      "Last observed memory vector RabbitMQ queue depth.",
+      labels,
+      snapshot.queueDepth,
+    );
+  }
+}
+
 function normalizeDurationMs(latencyMs: number): number {
   return Number.isFinite(latencyMs) && latencyMs >= 0 ? latencyMs : 0;
 }

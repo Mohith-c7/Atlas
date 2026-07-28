@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
+import { useOnlineStatus } from "@/lib/use-online-status";
 import {
   useFounderAccount,
   useFounderSessions,
@@ -23,6 +24,7 @@ function formatError(error: Error) {
 export function FounderAccountPanel() {
   const account = useFounderAccount();
   const sessions = useFounderSessions();
+  const isOnline = useOnlineStatus();
   const updateAccount = useUpdateFounderAccount();
   const revokeSession = useRevokeFounderSession();
   const [displayName, setDisplayName] = useState("");
@@ -87,6 +89,12 @@ export function FounderAccountPanel() {
         </span>
       </div>
 
+      {!isOnline ? (
+        <p className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          Offline. Account changes and session actions are unavailable until reconnect.
+        </p>
+      ) : null}
+
       <form className="mt-4 grid gap-3" onSubmit={handleSubmit}>
         <label className="grid gap-1.5 text-sm font-medium text-foreground">
           Display name
@@ -119,7 +127,7 @@ export function FounderAccountPanel() {
         </div>
         <button
           className="inline-flex min-h-10 items-center justify-center rounded-md bg-foreground px-4 text-sm font-semibold text-white transition hover:bg-foreground/90 disabled:cursor-not-allowed disabled:bg-muted"
-          disabled={updateAccount.isPending}
+          disabled={updateAccount.isPending || !isOnline}
           type="submit"
         >
           {updateAccount.isPending ? "Saving..." : "Save account context"}
@@ -129,6 +137,17 @@ export function FounderAccountPanel() {
       <div className="mt-4 border-t border-border pt-4">
         <p className="text-sm font-semibold text-foreground">Active sessions</p>
         <div className="mt-3 grid gap-2">
+          {sessions.isLoading ? (
+            <div className="grid gap-2" aria-label="Loading sessions">
+              {[0, 1].map((item) => (
+                <div
+                  className="h-16 animate-pulse rounded-md border border-border bg-background"
+                  key={item}
+                />
+              ))}
+            </div>
+          ) : null}
+
           {(sessions.data?.sessions ?? []).map((session) => (
             <div
               className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-background p-3 text-xs"
@@ -144,7 +163,7 @@ export function FounderAccountPanel() {
               </div>
               <button
                 className="rounded-md border border-border px-3 py-1.5 font-semibold text-foreground transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={revokeSession.isPending || session.status !== "active"}
+                disabled={revokeSession.isPending || session.status !== "active" || !isOnline}
                 onClick={() => revokeSession.mutate(session.id)}
                 type="button"
               >
@@ -152,6 +171,12 @@ export function FounderAccountPanel() {
               </button>
             </div>
           ))}
+
+          {!sessions.isLoading && !sessions.error && (sessions.data?.sessions.length ?? 0) === 0 ? (
+            <p className="rounded-md border border-border bg-background p-3 text-sm text-muted">
+              No active sessions are available for this founder account.
+            </p>
+          ) : null}
         </div>
       </div>
 

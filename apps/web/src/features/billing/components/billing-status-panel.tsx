@@ -7,6 +7,7 @@ import {
   useCreateBillingPortalSession,
 } from "../hooks/use-billing-status";
 import { BillingApiError } from "../types/billing";
+import { useOnlineStatus } from "@/lib/use-online-status";
 
 function formatError(error: Error) {
   if (error instanceof BillingApiError) {
@@ -22,6 +23,7 @@ export function BillingStatusPanel() {
   const billing = useBillingStatus();
   const checkout = useCreateBillingCheckoutSession();
   const portal = useCreateBillingPortalSession();
+  const isOnline = useOnlineStatus();
   const errorMessage = useMemo(
     () =>
       billing.error
@@ -81,6 +83,12 @@ export function BillingStatusPanel() {
         </span>
       </div>
 
+      {!isOnline ? (
+        <p className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          Offline. Checkout and portal redirects are paused until connectivity returns.
+        </p>
+      ) : null}
+
       <div className="mt-4 grid gap-3 text-xs sm:grid-cols-2">
         <div className="rounded-md border border-border bg-background p-3">
           <p className="font-semibold text-foreground">Entitlements</p>
@@ -107,7 +115,7 @@ export function BillingStatusPanel() {
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         <button
           className="inline-flex min-h-10 items-center justify-center rounded-md bg-foreground px-4 text-sm font-semibold text-white transition hover:bg-foreground/90 disabled:cursor-not-allowed disabled:bg-muted"
-          disabled={checkout.isPending}
+          disabled={checkout.isPending || !isOnline}
           onClick={handleCheckout}
           type="button"
         >
@@ -115,7 +123,7 @@ export function BillingStatusPanel() {
         </button>
         <button
           className="inline-flex min-h-10 items-center justify-center rounded-md border border-border bg-background px-4 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={portal.isPending}
+          disabled={portal.isPending || !isOnline}
           onClick={handlePortal}
           type="button"
         >

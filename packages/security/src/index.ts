@@ -11,6 +11,10 @@ const SENSITIVE_TEXT_PATTERNS: readonly RegExp[] = [
   /\b(?:sk|xoxb|xoxp|xapp)-[A-Za-z0-9-]{12,}\b/g,
   /\b(?:password|secret|token|api[_ -]?key)\s*[:=]\s*\S+/gi,
 ];
+const SENSITIVE_FIELD_PATTERN =
+  /authorization|cookie|set-cookie|token|secret|password|credential|api[_-]?key|private[_-]?key|ciphertext|auth[_-]?tag/i;
+const MAX_REDACTION_DEPTH = 8;
+const REDACTED_VALUE = "[REDACTED]";
 
 export const encryptedJsonPayloadSchema = z.object({
   algorithm: z.literal(ALGORITHM),
@@ -91,8 +95,48 @@ export function createEncryptionKeyFromEnvironment(): EncryptionKey {
 
 export function redactSensitiveText(value: string): string {
   return SENSITIVE_TEXT_PATTERNS.reduce(
-    (redacted, pattern) => redacted.replace(pattern, "[REDACTED]"),
+    (redacted, pattern) => redacted.replace(pattern, REDACTED_VALUE),
     value,
+  );
+}
+
+export function isSensitiveFieldName(fieldName: string): boolean {
+  return SENSITIVE_FIELD_PATTERN.test(fieldName);
+}
+
+export function redactSensitiveValue(value: unknown, depth = 0): unknown {
+  if (depth > MAX_REDACTION_DEPTH) {
+    return "[REDACTION_DEPTH_EXCEEDED]";
+  }
+
+  if (typeof value === "string") {
+    return redactSensitiveText(value);
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => redactSensitiveValue(item, depth + 1));
+  }
+
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, nestedValue]) => [
+      key,
+      isSensitiveFieldName(key) ? REDACTED_VALUE : redactSensitiveValue(nestedValue, depth + 1),
+    ]),
+  );
+}
+
+export function redactHttpHeaders(
+  headers: Record<string, string | string[] | number | undefined>,
+): Record<string, string | string[] | number | undefined> {
+  return Object.fromEntries(
+    Object.entries(headers).map(([key, value]) => [
+      key,
+      isSensitiveFieldName(key) ? REDACTED_VALUE : value,
+    ]),
   );
 }
 

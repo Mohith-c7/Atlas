@@ -22,6 +22,7 @@
     "@faios/logger": "workspace:*",
     "@faios/memory-vector": "workspace:*",
     "@faios/mcp": "workspace:*",
+    "@faios/observability": "workspace:*",
     "@faios/security": "workspace:*",
     "amqplib": "^2.0.1"
   },

@@ -2,7 +2,7 @@
 
 import { cn } from "@faios/ui";
 import { useMemo, useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, KeyboardEvent } from "react";
 
 import { useCreateCommand } from "../hooks/use-create-command";
 import { CommandApiError, type CreateCommandResponse } from "../types/command";
@@ -150,9 +150,7 @@ export function CommandComposer() {
     return createCommand.error.message;
   }, [createCommand.error]);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  function submitCommand() {
     if (!canSubmit) {
       return;
     }
@@ -173,6 +171,18 @@ export function CommandComposer() {
     );
   }
 
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    submitCommand();
+  }
+
+  function handleCommandKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+      event.preventDefault();
+      submitCommand();
+    }
+  }
+
   return (
     <div className="grid gap-5">
       <form
@@ -187,6 +197,7 @@ export function CommandComposer() {
             className="min-h-36 resize-none rounded-md border border-border bg-background px-4 py-3 text-base leading-7 text-foreground outline-none transition focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10"
             id="founder-command"
             maxLength={1_000}
+            onKeyDown={handleCommandKeyDown}
             onChange={(event) => setInput(event.target.value)}
             placeholder="Tell FAIOS what to plan across your tools..."
             value={input}
@@ -194,7 +205,9 @@ export function CommandComposer() {
         </div>
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs text-muted">{characterCount}/1000 characters</p>
+          <p className="text-xs text-muted">
+            {characterCount}/1000 characters - Ctrl/Cmd Enter to send
+          </p>
           <button
             className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted"
             disabled={!canSubmit}
@@ -227,7 +240,10 @@ export function CommandComposer() {
       </form>
 
       {errorMessage ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div
+          aria-live="polite"
+          className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+        >
           {errorMessage}
         </div>
       ) : null}
