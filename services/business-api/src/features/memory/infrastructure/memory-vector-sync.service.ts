@@ -1,40 +1,42 @@
+import { randomUUID } from "node:crypto";
 import type { MemoryItem } from "@faios/contracts";
+import {
+  memoryVectorJobExchange,
+  memoryVectorJobQueue,
+  memoryVectorJobRoutingKey,
+  type MemoryVectorJobAction,
+  type MemoryVectorJobMessage,
+} from "@faios/contracts";
 import type { PrismaClient } from "@faios/database";
-import {
-  createMemoryEmbeddingProvider,
-  type MemoryEmbeddingProvider,
-} from "./memory-embedding.provider.js";
-import {
-  QdrantMemoryVectorRepository,
-  toQdrantPointId,
-} from "./qdrant-memory-vector.repository.js";
-import { MemoryRepository } from "./memory.repository.js";
+import amqp from "amqplib";
 
-type VectorSyncMode = "async" | "inline" | "disabled";
+type VectorSyncMode = "async" | "disabled";
 
 function readVectorSyncMode(): VectorSyncMode {
   const mode = process.env.MEMORY_VECTOR_SYNC_MODE;
 
-  return mode === "inline" || mode === "disabled" ? mode : "async";
+  return mode === "disabled" ? mode : "async";
+}
+
+const readMemoryVectorQueueName = () =>
+  process.env.MEMORY_VECTOR_QUEUE_NAME ?? memoryVectorJobQueue;
+
+function readMaxRetries(): number {
+  const value = Number(process.env.MEMORY_VECTOR_JOB_MAX_ATTEMPTS ?? "5");
+  const maxAttempts = Number.isInteger(value) && value > 0 ? value : 5;
+
+  return Math.max(0, maxAttempts - 1);
 }
 
 export class MemoryVectorSyncService {
-  private readonly memoryRepository: MemoryRepository;
-  private readonly embeddingProvider: MemoryEmbeddingProvider;
-  private readonly vectorRepository: QdrantMemoryVectorRepository;
   private readonly syncMode: VectorSyncMode;
 
   public constructor(
     private readonly database: PrismaClient,
     input?: {
-      embeddingProvider?: MemoryEmbeddingProvider;
-      vectorRepository?: QdrantMemoryVectorRepository;
       syncMode?: VectorSyncMode;
     },
   ) {
-    this.memoryRepository = new MemoryRepository(database);
-    this.embeddingProvider = input?.embeddingProvider ?? createMemoryEmbeddingProvider();
-    this.vectorRepository = input?.vectorRepository ?? new QdrantMemoryVectorRepository();
     this.syncMode = input?.syncMode ?? readVectorSyncMode();
   }
 
@@ -43,14 +45,11 @@ export class MemoryVectorSyncService {
       return;
     }
 
-    const sync = this.upsert(founderId, memories);
-
-    if (this.syncMode === "inline") {
-      await sync;
-      return;
-    }
-
-    sync.catch(() => undefined);
+    await this.enqueueJob({
+      founderId,
+      action: "upsert",
+      memoryIds: memories.map((memory) => memory.id),
+    });
   }
 
   public async scheduleDelete(founderId: string, memoryIds: readonly string[]): Promise<void> {
@@ -58,57 +57,91 @@ export class MemoryVectorSyncService {
       return;
     }
 
-    const sync = this.delete(founderId, memoryIds);
+    await this.enqueueJob({
+      founderId,
+      action: "delete",
+      memoryIds,
+    });
+  }
 
-    if (this.syncMode === "inline") {
-      await sync;
+  private async enqueueJob(input: {
+    founderId: string;
+    action: MemoryVectorJobAction;
+    memoryIds: readonly string[];
+  }): Promise<void> {
+    const memoryIds = [...new Set(input.memoryIds)].sort();
+
+    if (memoryIds.length === 0) {
       return;
     }
 
-    sync.catch(() => undefined);
+    const job = await this.database.memoryVectorJob.create({
+      data: {
+        founderId: input.founderId,
+        action: input.action,
+        memoryIds,
+        idempotencyKey: `${input.action}:${input.founderId}:${memoryIds.join(",")}:${randomUUID()}`,
+        correlationId: undefined,
+        maxRetries: readMaxRetries(),
+      },
+    });
+
+    await this.publishJob({
+      schemaVersion: 1,
+      eventType: "memory.vector-job.queued",
+      jobId: job.id,
+      founderId: input.founderId,
+      action: input.action,
+      memoryIds,
+      enqueuedAt: new Date().toISOString(),
+    });
   }
 
-  public async upsert(founderId: string, memories: readonly MemoryItem[]): Promise<void> {
-    const activeMemories = memories.filter((memory) => !memory.archivedAt && !memory.deletedAt);
-
-    if (activeMemories.length === 0) {
+  private async publishJob(message: MemoryVectorJobMessage): Promise<void> {
+    if (process.env.MEMORY_VECTOR_JOB_DISPATCH_ENABLED !== "true") {
       return;
     }
 
-    const vectors = await Promise.all(
-      activeMemories.map(async (memory) => ({
-        id: memory.id,
-        founderId,
-        vector: await this.embeddingProvider.embedText(`${memory.kind}\n${memory.content}`),
-        content: memory.content,
-        kind: memory.kind,
-      })),
-    );
+    const rabbitMqUrl = process.env.RABBITMQ_URL;
 
-    await this.vectorRepository.upsertMemoryVectors(vectors);
+    if (!rabbitMqUrl) {
+      return;
+    }
 
-    await Promise.all(
-      activeMemories.map((memory) =>
-        this.memoryRepository.updateMemoryVectorRef({
-          founderId,
-          memoryId: memory.id,
-          vectorRef: toQdrantPointId(memory.id),
-        }),
-      ),
-    );
-  }
+    const connection = await amqp.connect(rabbitMqUrl);
 
-  public async delete(founderId: string, memoryIds: readonly string[]): Promise<void> {
-    await this.vectorRepository.deleteMemoryVectors(memoryIds);
+    try {
+      const channel = await connection.createConfirmChannel();
 
-    await Promise.all(
-      memoryIds.map((memoryId) =>
-        this.memoryRepository.updateMemoryVectorRef({
-          founderId,
-          memoryId,
-          vectorRef: null,
-        }),
-      ),
-    );
+      try {
+        await channel.assertExchange(memoryVectorJobExchange, "direct", {
+          durable: true,
+        });
+        const queueName = readMemoryVectorQueueName();
+
+        await channel.assertQueue(queueName, {
+          durable: true,
+        });
+        await channel.bindQueue(queueName, memoryVectorJobExchange, memoryVectorJobRoutingKey);
+
+        channel.publish(
+          memoryVectorJobExchange,
+          memoryVectorJobRoutingKey,
+          Buffer.from(JSON.stringify(message)),
+          {
+            contentType: "application/json",
+            deliveryMode: 2,
+            messageId: message.jobId,
+            correlationId: message.correlationId,
+            timestamp: Math.floor(Date.now() / 1000),
+          },
+        );
+        await channel.waitForConfirms();
+      } finally {
+        await channel.close();
+      }
+    } finally {
+      await connection.close();
+    }
   }
 }

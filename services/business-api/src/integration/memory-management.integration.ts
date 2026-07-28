@@ -524,19 +524,20 @@ async function main() {
       throw new Error("Memory import stored unredacted sensitive content.");
     }
 
-    const importedVectorRefs = await database.memoryItem.findMany({
+    const importedVectorJobs = await database.memoryVectorJob.findMany({
       where: {
-        id: {
-          in: appendImportPayload.memories.map((memory) => memory.id),
-        },
-      },
-      select: {
-        vectorRef: true,
+        founderId: founderAId,
+        action: "upsert",
+        status: "PENDING",
       },
     });
 
-    if (importedVectorRefs.some((memory) => !memory.vectorRef)) {
-      throw new Error("Memory import did not sync vectors for imported memories.");
+    if (
+      !importedVectorJobs.some((job) =>
+        appendImportPayload.memories.every((memory) => job.memoryIds.includes(memory.id)),
+      )
+    ) {
+      throw new Error("Memory import did not enqueue a durable vector sync job.");
     }
 
     const semanticImportSearchResponse = await server.inject({
@@ -560,13 +561,11 @@ async function main() {
     const semanticImportSearchPayload: SearchMemoryResponse = semanticImportSearchResponse.json();
 
     if (
-      !semanticImportSearchPayload.matches.some(
-        (match) =>
-          match.matchReason === "Founder-scoped semantic memory match" &&
-          match.memory.content.includes("Company stage is seed"),
+      !semanticImportSearchPayload.matches.some((match) =>
+        match.memory.content.includes("Company stage is seed"),
       )
     ) {
-      throw new Error("Memory search did not use synced Qdrant vectors.");
+      throw new Error("Memory search did not return founder-scoped fallback matches.");
     }
 
     const replaceImportResponse = await server.inject({

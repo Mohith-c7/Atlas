@@ -72,16 +72,6 @@ export class QdrantMemoryVectorRepository {
     }
   }
 
-  public async upsertMemoryVector(input: {
-    id: string;
-    founderId: string;
-    vector: readonly number[];
-    content: string;
-    kind: string;
-  }): Promise<void> {
-    await this.upsertMemoryVectors([input]);
-  }
-
   public async upsertMemoryVectors(
     inputs: ReadonlyArray<{
       id: string;

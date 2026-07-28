@@ -215,50 +215,41 @@ Goal: make FAIOS remember useful context while remaining controllable and privac
 - The founder can inspect, edit, delete, and export memory.
 - Sensitive data is redacted before memory storage when policy requires it.
 
-## Milestone M14: MCP Provider Expansion
+## Milestone M14: Durable Job Runtime
 
-Goal: support the first production-grade provider set for founders.
+Goal: move memory vector synchronization and other side-effect-heavy runtime work out of request/response paths and into durable, observable worker queues.
 
-### Provider Order
+### Memory Vector Worker Checklist
 
-1. GitHub breadth expansion
-2. Google Calendar
-3. Gmail
-4. Slack
-5. Notion
-6. Jira or ClickUp
-7. WhatsApp Business
+- [x] Define RabbitMQ exchange, queue, routing key, and dead-letter queue names for memory vector sync.
+- [x] Add typed environment controls for queue names, worker concurrency, max attempts, and retry delays.
+- [x] Publish memory vector sync jobs after memory create, import, archive, unarchive, and soft delete events.
+- [x] Make API memory writes enqueue jobs without blocking founder-facing responses.
+- [x] Add idempotent worker handling keyed by durable memory vector job state.
+- [x] Move embedding generation and Qdrant upsert/delete operations into the worker process.
+- [x] Add exponential backoff with bounded retries for transient embedding and Qdrant failures.
+- [x] Route exhausted RabbitMQ-consumed jobs to a dead-letter queue with redacted diagnostic metadata.
+- [ ] Persist vector sync status, last error class, and last synced timestamp for operator visibility.
+- [ ] Add safe replay tooling for failed memory vector sync jobs.
 
-### Shared Adapter Checklist
+### Runtime Reliability Checklist
 
-- [ ] Define provider capabilities.
-- [ ] Define request and response schemas.
-- [ ] Define action risk levels.
-- [ ] Define approval requirements.
-- [ ] Define idempotency keys.
-- [ ] Define retry policy.
-- [ ] Define rate-limit handling.
-- [ ] Define payload redaction rules.
-- [ ] Define credential requirements.
-- [ ] Add fake provider for tests.
-- [ ] Add contract tests.
-- [ ] Add one founder-facing workflow smoke test.
-
-### Provider-Specific Checklist
-
-- [ ] Expand GitHub to search repositories, list issues, create issues, comment, and summarize repository state.
-- [ ] Add Google Calendar read, create event, reschedule event, and availability lookup.
-- [ ] Add Gmail search, summarize thread, draft reply, and send-with-approval.
-- [ ] Add Slack search, summarize channel, draft message, and send-with-approval.
-- [ ] Add Notion search, page creation, task/database item creation, and summary.
-- [ ] Add Jira or ClickUp issue search, create task, update status, and comment.
-- [ ] Add WhatsApp Business message drafting and send-with-approval.
+- [x] Standardize memory vector job envelopes with founder ids, durable job ids, schema versions, and payload IDs only.
+- [ ] Add worker startup checks for RabbitMQ, Qdrant, embedding provider configuration, and database access.
+- [x] Add graceful shutdown that stops consumption loops and closes shared database clients.
+- [x] Add structured logs for consume, retry, failure, and success events.
+- [ ] Add metrics for queue depth, processing latency, retry count, dead-letter count, and provider latency.
+- [x] Add integration tests for durable enqueue, success, retry, idempotent replay, and Qdrant deletion.
+- [ ] Document local and Kubernetes operational runbooks for memory vector sync.
 
 ### Acceptance Criteria
 
-- Each adapter can be added without changing core execution code.
-- Risky write/send actions require approval.
-- Provider failures are visible, retry-safe, and redacted.
+- Founder memory writes remain fast when Qdrant or embedding providers are slow.
+- Memory vectors are eventually synchronized through durable worker jobs.
+- Failed vector sync jobs retry safely and land in a dead-letter queue after exhaustion.
+- Operators can inspect sync status and replay failed jobs without corrupting memory data.
+- The API process no longer owns long-running embedding/Qdrant side effects except in explicit local fallback mode.
+- Worker and provider failures are visible, retry-safe, and redacted.
 
 ## Milestone M15: Founder Product UX
 
@@ -457,7 +448,7 @@ Every completed implementation slice must include:
 3. M11 Real AI Planning And Model Operations
 4. M12 Streaming Voice Experience
 5. M13 Memory Intelligence
-6. M14 MCP Provider Expansion
+6. M14 Durable Job Runtime
 7. M15 Founder Product UX
 8. M16 Security, Privacy, And Compliance
 9. M17 Observability, Reliability, And Operations
@@ -863,6 +854,31 @@ M13.3 makes Qdrant the true semantic memory layer by replacing placeholder vecto
 - `pnpm test`
 - `pnpm build`
 - `pnpm --filter @faios/business-api test:integration`
+
+## Sixteenth Next Implementation Slice
+
+M14.1 introduces the production contract for durable memory vector jobs before business logic is moved into workers.
+
+### M14.1 Checklist
+
+- [x] Present M14 as the durable job runtime milestone.
+- [x] Add typed memory vector queue environment variables.
+- [x] Add local `.env.example` values for memory vector queue, retry, and concurrency controls.
+- [x] Add Kubernetes ConfigMap values for memory vector queue, retry, and concurrency controls.
+- [x] Implement RabbitMQ memory vector job publisher.
+- [x] Implement memory vector worker consumer.
+- [x] Move embedding and Qdrant sync side effects behind durable jobs.
+- [x] Add dead-letter handling for RabbitMQ-exhausted jobs.
+- [x] Add runtime integration coverage for retry and idempotent replay.
+- [ ] Add replay tooling for failed memory vector jobs.
+- [ ] Add dedicated RabbitMQ DLQ integration coverage in CI once RabbitMQ-backed integration tests are enabled by default.
+
+### M14.1 Completion Gate
+
+- manual diff review for `.env.example`
+- `pnpm exec prettier --check docs/faios-100-percent-implementation-plan.md packages/env/src/index.ts infra/kubernetes/base/configmap.yaml`
+- `pnpm --filter @faios/env lint`
+- `pnpm --filter @faios/env typecheck`
 
 ## Out Of Scope For V1
 

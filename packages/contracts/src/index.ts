@@ -606,6 +606,25 @@ export const executionDispatchMessageSchema = z.object({
   enqueuedAt: z.string(),
 });
 
+export const memoryVectorJobExchange = "faios.memory";
+export const memoryVectorJobQueue = "faios.memory.vector-sync";
+export const memoryVectorJobDeadLetterQueue = "faios.memory.vector-sync.dlq";
+export const memoryVectorJobRoutingKey = "memory.vector-job.queued";
+export const memoryVectorJobDeadLetterRoutingKey = "memory.vector-job.dead-lettered";
+
+export const memoryVectorJobActionSchema = z.enum(["upsert", "delete"]);
+
+export const memoryVectorJobMessageSchema = z.object({
+  schemaVersion: z.literal(1),
+  eventType: z.literal("memory.vector-job.queued"),
+  jobId: z.string(),
+  founderId: z.string(),
+  action: memoryVectorJobActionSchema,
+  memoryIds: z.array(z.string()).min(1),
+  correlationId: z.string().optional(),
+  enqueuedAt: z.string(),
+});
+
 export const commandExecutionTimelineItemSchema = z.object({
   commandId: z.string(),
   status: commandStatusSchema,
@@ -695,6 +714,8 @@ export type ExecutionPlan = z.infer<typeof executionPlanSchema>;
 export type ExecutionStep = z.infer<typeof executionStepSchema>;
 export type ExecutionJob = z.infer<typeof executionJobSchema>;
 export type ExecutionDispatchMessage = z.infer<typeof executionDispatchMessageSchema>;
+export type MemoryVectorJobAction = z.infer<typeof memoryVectorJobActionSchema>;
+export type MemoryVectorJobMessage = z.infer<typeof memoryVectorJobMessageSchema>;
 export type GitHubIntegrationConnectionRequest = z.infer<
   typeof githubIntegrationConnectionRequestSchema
 >;

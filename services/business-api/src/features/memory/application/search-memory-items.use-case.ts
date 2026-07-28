@@ -1,9 +1,8 @@
 import type { SearchMemoryRequest, SearchMemoryResponse } from "@faios/contracts";
 import type { PrismaClient } from "@faios/database";
+import { createMemoryEmbeddingProvider, QdrantMemoryVectorRepository } from "@faios/memory-vector";
 import type { FounderSession } from "../../../lib/founder-session.js";
 import { resolveFounderAccount } from "../../commands/infrastructure/founder-resolver.js";
-import { createMemoryEmbeddingProvider } from "../infrastructure/memory-embedding.provider.js";
-import { QdrantMemoryVectorRepository } from "../infrastructure/qdrant-memory-vector.repository.js";
 import { MemoryRepository } from "../infrastructure/memory.repository.js";
 
 const DEFAULT_SEARCH_LIMIT = 10;

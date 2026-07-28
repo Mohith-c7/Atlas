@@ -1,10 +1,19 @@
-import { AppError } from "../../../lib/errors.js";
-import { createDeterministicTextVector } from "../application/memory-text-vector.js";
+import { createDeterministicTextVector } from "./deterministic-vector.js";
 
 export type MemoryEmbeddingProvider = {
   readonly dimensions: number;
   embedText(text: string): Promise<number[]>;
 };
+
+export class MemoryEmbeddingError extends Error {
+  public constructor(
+    public readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "MemoryEmbeddingError";
+  }
+}
 
 type OpenAIEmbeddingResponse = {
   readonly data?: ReadonlyArray<{
@@ -21,19 +30,17 @@ function readEmbeddingDimensions(): number {
 
 function normalizeVector(value: unknown, dimensions: number): number[] {
   if (!Array.isArray(value) || value.length !== dimensions) {
-    throw new AppError(
+    throw new MemoryEmbeddingError(
       "MEMORY_EMBEDDING_INVALID",
       "Embedding provider returned an invalid vector.",
-      502,
     );
   }
 
   return value.map((entry) => {
     if (typeof entry !== "number" || !Number.isFinite(entry)) {
-      throw new AppError(
+      throw new MemoryEmbeddingError(
         "MEMORY_EMBEDDING_INVALID",
         "Embedding provider returned a non-numeric vector.",
-        502,
       );
     }
 
@@ -67,10 +74,9 @@ export class OpenAIMemoryEmbeddingProvider implements MemoryEmbeddingProvider {
 
   public async embedText(text: string): Promise<number[]> {
     if (!this.apiKey) {
-      throw new AppError(
+      throw new MemoryEmbeddingError(
         "MEMORY_EMBEDDING_NOT_CONFIGURED",
         "OpenAI embedding provider is not configured.",
-        503,
       );
     }
 
@@ -88,17 +94,15 @@ export class OpenAIMemoryEmbeddingProvider implements MemoryEmbeddingProvider {
     });
 
     if (!response.ok) {
-      throw new AppError(
+      throw new MemoryEmbeddingError(
         "MEMORY_EMBEDDING_UNAVAILABLE",
         `Embedding provider failed with status ${response.status}.`,
-        502,
       );
     }
 
     const payload = (await response.json()) as OpenAIEmbeddingResponse;
-    const embedding = payload.data?.[0]?.embedding;
 
-    return normalizeVector(embedding, this.dimensions);
+    return normalizeVector(payload.data?.[0]?.embedding, this.dimensions);
   }
 }
 

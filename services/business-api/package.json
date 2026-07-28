@@ -19,6 +19,7 @@
     "@faios/env": "workspace:*",
     "@faios/events": "workspace:*",
     "@faios/logger": "workspace:*",
+    "@faios/memory-vector": "workspace:*",
     "@faios/mcp": "workspace:*",
     "@faios/security": "workspace:*",
     "@fastify/cors": "^11.3.0",
