@@ -26,6 +26,7 @@ async function invalidateIntegrationState(
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: ["integrations", "connections"] }),
     queryClient.invalidateQueries({ queryKey: ["integrations", "catalog"] }),
+    queryClient.invalidateQueries({ queryKey: ["founder-workflows"] }),
     provider
       ? queryClient.invalidateQueries({
           queryKey: ["integrations", "providers", provider, "status"],

@@ -209,6 +209,37 @@ export const listCapabilitiesResponseSchema = z.object({
   capabilities: z.array(mcpCapabilitySchema),
 });
 
+export const workflowImplementationStatusSchema = z.enum(["live", "planned"]);
+export const workflowReadinessStatusSchema = z.enum([
+  "ready",
+  "not_connected",
+  "planned",
+  "disabled",
+]);
+export const workflowExecutionModeSchema = z.enum([
+  "automatic",
+  "approval_required",
+  "planned_only",
+]);
+
+export const founderWorkflowSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  description: z.string().min(1),
+  triggerExamples: z.array(z.string().min(1)),
+  provider: z.string().min(1),
+  capabilityKeys: z.array(z.string().min(1)),
+  requiresApproval: z.boolean(),
+  executionMode: workflowExecutionModeSchema,
+  readinessStatus: workflowReadinessStatusSchema,
+  implementationStatus: workflowImplementationStatusSchema,
+});
+
+export const listFounderWorkflowsResponseSchema = z.object({
+  workflows: z.array(founderWorkflowSchema),
+  correlationId: z.string().optional(),
+});
+
 export const githubIntegrationConnectionRequestSchema = z.object({
   accountLabel: z.string().min(1).max(120).optional(),
   owner: z.string().min(1).max(120),
@@ -507,13 +538,35 @@ export const githubCreateIssueExecutionPayloadSchema = z.object({
   labels: z.array(z.string().min(1)).max(20).optional(),
 });
 
-export const executionStepSchema = z.object({
-  capability: z.string(),
-  provider: z.string().optional(),
-  requiresApproval: z.boolean().default(false),
-  reason: z.string(),
-  executionPayload: z.unknown().optional(),
+export const githubRepositoryStatusExecutionPayloadSchema = z.object({
+  includeIssues: z.boolean().default(true),
+  includePullRequests: z.boolean().default(true),
+  itemLimit: z.number().int().min(1).max(20).default(5),
 });
+
+export const executionStepSchema = z
+  .object({
+    capability: z.string(),
+    provider: z.string().optional(),
+    requiresApproval: z.boolean().default(false),
+    reason: z.string(),
+    executionPayload: z.unknown().optional(),
+  })
+  .superRefine((step, ctx) => {
+    const payloadSchemas: Record<string, z.ZodTypeAny> = {
+      "repository.createIssue": githubCreateIssueExecutionPayloadSchema,
+      "repository.summarizeStatus": githubRepositoryStatusExecutionPayloadSchema,
+    };
+    const payloadSchema = payloadSchemas[step.capability];
+
+    if (payloadSchema && !payloadSchema.safeParse(step.executionPayload).success) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid execution payload for capability ${step.capability}.`,
+        path: ["executionPayload"],
+      });
+    }
+  });
 
 export const executionPlanSchema = z.object({
   commandId: z.string(),
@@ -726,6 +779,9 @@ export type CompleteGitHubOAuthResponse = z.infer<typeof completeGitHubOAuthResp
 export type GitHubCreateIssueExecutionPayload = z.infer<
   typeof githubCreateIssueExecutionPayloadSchema
 >;
+export type GitHubRepositoryStatusExecutionPayload = z.infer<
+  typeof githubRepositoryStatusExecutionPayloadSchema
+>;
 export type IntegrationConnection = z.infer<typeof integrationConnectionSchema>;
 export type IntegrationConnectionStatus = z.infer<typeof integrationConnectionStatusSchema>;
 export type IntegrationCatalogItem = z.infer<typeof integrationCatalogItemSchema>;
@@ -774,6 +830,11 @@ export type MergeMemoryItemsRequest = z.infer<typeof mergeMemoryItemsRequestSche
 export type MergeMemoryItemsResponse = z.infer<typeof mergeMemoryItemsResponseSchema>;
 export type McpCapability = z.infer<typeof mcpCapabilitySchema>;
 export type McpCapabilityStatus = z.infer<typeof mcpCapabilityStatusSchema>;
+export type FounderWorkflow = z.infer<typeof founderWorkflowSchema>;
+export type WorkflowExecutionMode = z.infer<typeof workflowExecutionModeSchema>;
+export type WorkflowImplementationStatus = z.infer<typeof workflowImplementationStatusSchema>;
+export type WorkflowReadinessStatus = z.infer<typeof workflowReadinessStatusSchema>;
+export type ListFounderWorkflowsResponse = z.infer<typeof listFounderWorkflowsResponseSchema>;
 export type Pagination = z.infer<typeof paginationSchema>;
 export type PlanCommandRequest = z.infer<typeof planCommandRequestSchema>;
 export type PlanCommandResponse = z.infer<typeof planCommandResponseSchema>;

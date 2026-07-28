@@ -8,6 +8,7 @@ import { MemoryManagementPanel } from "@/features/memory";
 import { CapabilityReadinessPanel } from "@/features/mcp";
 import { FounderOnboardingChecklist } from "./founder-onboarding-checklist";
 import { FounderOperatingSnapshot } from "./founder-operating-snapshot";
+import { WorkflowCatalogPanel } from "@/features/workflows";
 
 const navigationItems = [
   { href: "#command-center", label: "Command" },
@@ -138,6 +139,7 @@ export function FounderDashboardShell() {
             <ApprovalPanel />
             <ExecutionTimelinePanel />
           </div>
+          <WorkflowCatalogPanel />
         </section>
 
         <section className="grid scroll-mt-28 gap-5" id="integrations">

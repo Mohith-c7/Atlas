@@ -48,6 +48,16 @@ DEFAULT_CAPABILITIES: tuple[AvailableCapability, ...] = (
     ),
     AvailableCapability.model_validate(
         {
+            "key": "repository.summarizeStatus",
+            "provider": "github",
+            "label": "Summarize repository status",
+            "description": "Summarize GitHub repository status.",
+            "requiresApproval": False,
+            "status": "available",
+        }
+    ),
+    AvailableCapability.model_validate(
+        {
             "key": "knowledge.search",
             "provider": "notion",
             "label": "Search knowledge",

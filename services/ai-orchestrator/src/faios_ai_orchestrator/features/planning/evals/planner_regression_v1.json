@@ -14,6 +14,13 @@
     "expectedApproval": false
   },
   {
+    "id": "github_repository_status",
+    "input": "Summarize GitHub repo status",
+    "expectedCapabilities": ["repository.summarizeStatus"],
+    "expectedStatus": "completed",
+    "expectedApproval": false
+  },
+  {
     "id": "calendar_schedule",
     "input": "Schedule a meeting with the design advisor tomorrow",
     "expectedCapabilities": ["calendar.schedule"],

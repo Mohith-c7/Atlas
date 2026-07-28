@@ -41,6 +41,14 @@ export const DEFAULT_MCP_CAPABILITIES = [
     requiresApproval: true,
     status: "available",
   },
+  {
+    key: "repository.summarizeStatus",
+    provider: "github",
+    label: "Summarize repository status",
+    description: "Summarize repository health, open issues, and pull request activity.",
+    requiresApproval: false,
+    status: "available",
+  },
 ] satisfies McpCapability[];
 
 export class CapabilityRegistry {

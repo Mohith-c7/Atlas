@@ -1,4 +1,9 @@
-import { GitHubCreateIssueAdapter, McpAdapterRegistry, type FetchLike } from "@faios/mcp";
+import {
+  GitHubCreateIssueAdapter,
+  GitHubRepositoryStatusAdapter,
+  McpAdapterRegistry,
+  type FetchLike,
+} from "@faios/mcp";
 import { getPrismaClient } from "@faios/database";
 import { encryptJsonPayload, parseBase64EncryptionKey } from "@faios/security";
 import { ExecutionRepository } from "../execution/execution.repository.js";
@@ -38,30 +43,86 @@ async function main() {
     },
   });
 
-  let observedAuthorizationHeader = "";
-  let observedRequestBody: unknown;
+  const observedAuthorizationHeaders: string[] = [];
+  let observedIssueRequestBody: unknown;
 
   const fakeFetch: FetchLike = (input, init) => {
-    if (input !== "https://api.github.test/repos/faios/atlas/issues") {
-      throw new Error(`Unexpected GitHub endpoint: ${input}`);
+    observedAuthorizationHeaders.push(init?.headers?.Authorization ?? "");
+
+    if (input === "https://api.github.test/repos/faios/atlas/issues") {
+      observedIssueRequestBody = init?.body ? (JSON.parse(init.body) as unknown) : undefined;
+
+      return Promise.resolve({
+        ok: true,
+        status: 201,
+        json: () =>
+          Promise.resolve({
+            id: 123456,
+            number: 42,
+            html_url: "https://github.test/faios/atlas/issues/42",
+            state: "open",
+            title: "Create founder onboarding issue",
+          }),
+        text: () => Promise.resolve(""),
+      });
     }
 
-    observedAuthorizationHeader = init?.headers?.Authorization ?? "";
-    observedRequestBody = init?.body ? (JSON.parse(init.body) as unknown) : undefined;
+    if (input === "https://api.github.test/repos/faios/atlas") {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            full_name: "faios/atlas",
+            html_url: "https://github.test/faios/atlas",
+            description: "Founder AI Operating System",
+            default_branch: "main",
+            open_issues_count: 7,
+            stargazers_count: 11,
+            forks_count: 2,
+            pushed_at: "2026-07-28T10:00:00Z",
+          }),
+        text: () => Promise.resolve(""),
+      });
+    }
 
-    return Promise.resolve({
-      ok: true,
-      status: 201,
-      json: () =>
-        Promise.resolve({
-          id: 123456,
-          number: 42,
-          html_url: "https://github.test/faios/atlas/issues/42",
-          state: "open",
-          title: "Create founder onboarding issue",
-        }),
-      text: () => Promise.resolve(""),
-    });
+    if (input === "https://api.github.test/repos/faios/atlas/issues?state=open&per_page=5") {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve([
+            {
+              number: 42,
+              title: "Create founder onboarding issue",
+              html_url: "https://github.test/faios/atlas/issues/42",
+              state: "open",
+              updated_at: "2026-07-28T10:00:00Z",
+            },
+          ]),
+        text: () => Promise.resolve(""),
+      });
+    }
+
+    if (input === "https://api.github.test/repos/faios/atlas/pulls?state=open&per_page=5") {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve([
+            {
+              number: 9,
+              title: "Harden workflow catalog",
+              html_url: "https://github.test/faios/atlas/pull/9",
+              state: "open",
+              updated_at: "2026-07-28T11:00:00Z",
+            },
+          ]),
+        text: () => Promise.resolve(""),
+      });
+    }
+
+    throw new Error(`Unexpected GitHub endpoint: ${input}`);
   };
 
   try {
@@ -71,7 +132,7 @@ async function main() {
         provider: "github",
         accountLabel: "FAIOS GitHub",
         status: "connected",
-        capabilityKeys: ["repository.createIssue"],
+        capabilityKeys: ["repository.createIssue", "repository.summarizeStatus"],
         metadata: {
           installation: "integration-test",
         },
@@ -85,12 +146,9 @@ async function main() {
     });
 
     const registry = new McpAdapterRegistry();
-    registry.register(
-      new GitHubCreateIssueAdapter(
-        new DatabaseMcpCredentialResolver(database, encryptionKey),
-        fakeFetch,
-      ),
-    );
+    const credentialResolver = new DatabaseMcpCredentialResolver(database, encryptionKey);
+    registry.register(new GitHubCreateIssueAdapter(credentialResolver, fakeFetch));
+    registry.register(new GitHubRepositoryStatusAdapter(credentialResolver, fakeFetch));
     const worker = new ExecutionWorker(
       new ExecutionRepository(database),
       new RegistryMcpToolExecutor(registry),
@@ -98,8 +156,14 @@ async function main() {
     );
 
     const readiness = await registry.listReadiness(founder.id);
+    const createIssueReadiness = readiness.find(
+      (item) => item.capabilityKey === "repository.createIssue",
+    );
+    const repositoryStatusReadiness = readiness.find(
+      (item) => item.capabilityKey === "repository.summarizeStatus",
+    );
 
-    if (readiness[0]?.status !== "ready") {
+    if (createIssueReadiness?.status !== "ready" || repositoryStatusReadiness?.status !== "ready") {
       throw new Error(`Expected GitHub adapter readiness, received ${JSON.stringify(readiness)}.`);
     }
 
@@ -112,11 +176,11 @@ async function main() {
       throw new Error(`Expected successful GitHub execution, received ${JSON.stringify(result)}.`);
     }
 
-    if (observedAuthorizationHeader !== `Bearer ${githubAccessToken}`) {
+    if (!observedAuthorizationHeaders.includes(`Bearer ${githubAccessToken}`)) {
       throw new Error("GitHub adapter did not receive the decrypted access token at runtime.");
     }
 
-    if (JSON.stringify(observedRequestBody).includes("must-be-redacted-before-adapter")) {
+    if (JSON.stringify(observedIssueRequestBody).includes("must-be-redacted-before-adapter")) {
       throw new Error("Sensitive request payload reached the GitHub adapter transport.");
     }
 
@@ -138,6 +202,31 @@ async function main() {
 
     if (!storedPayload.includes("https://github.test/faios/atlas/issues/42")) {
       throw new Error("GitHub issue response payload did not include the created issue URL.");
+    }
+
+    const statusInvocation = await createGitHubStatusInvocation(founder.id);
+    const statusResult = await worker.runInvocation(statusInvocation.id);
+
+    if (!statusResult.processed || statusResult.status !== "succeeded") {
+      throw new Error(
+        `Expected successful GitHub status execution, received ${JSON.stringify(statusResult)}.`,
+      );
+    }
+
+    const completedStatusInvocation = await database.toolInvocation.findUniqueOrThrow({
+      where: {
+        id: statusInvocation.id,
+      },
+    });
+
+    const statusPayload = JSON.stringify(completedStatusInvocation.responsePayload);
+
+    if (
+      !statusPayload.includes("faios/atlas") ||
+      !statusPayload.includes("open pull requests") ||
+      statusPayload.includes(githubAccessToken)
+    ) {
+      throw new Error("GitHub repository status payload was not persisted safely.");
     }
 
     await database.integrationConnection.update({
@@ -186,10 +275,18 @@ async function main() {
     });
 
     const unhealthyReadiness = await registry.listReadiness(founder.id);
+    const unhealthyCreateIssueReadiness = unhealthyReadiness.find(
+      (item) => item.capabilityKey === "repository.createIssue",
+    );
+    const unhealthyRepositoryStatusReadiness = unhealthyReadiness.find(
+      (item) => item.capabilityKey === "repository.summarizeStatus",
+    );
 
     if (
-      unhealthyReadiness[0]?.status !== "not_ready" ||
-      !unhealthyReadiness[0].reason.includes("revoked")
+      unhealthyCreateIssueReadiness?.status !== "not_ready" ||
+      unhealthyRepositoryStatusReadiness?.status !== "not_ready" ||
+      !unhealthyCreateIssueReadiness?.reason.includes("revoked") ||
+      !unhealthyRepositoryStatusReadiness?.reason.includes("revoked")
     ) {
       throw new Error(
         `Expected unhealthy GitHub readiness, received ${JSON.stringify(unhealthyReadiness)}.`,
@@ -305,6 +402,32 @@ async function createGitHubIssueInvocation(
         body: "Track onboarding polish for the founder command flow.",
         labels: ["product", "onboarding"],
         ...extraPayload,
+      },
+    },
+  });
+}
+
+async function createGitHubStatusInvocation(founderId: string) {
+  const command = await database.command.create({
+    data: {
+      founderId,
+      source: "CHAT",
+      rawInput: "Summarize GitHub repository status",
+      status: "EXECUTING",
+      summary: "Summarize GitHub repository status",
+    },
+  });
+
+  return database.toolInvocation.create({
+    data: {
+      commandId: command.id,
+      capabilityKey: "repository.summarizeStatus",
+      provider: "github",
+      status: "PENDING",
+      requestPayload: {
+        includeIssues: true,
+        includePullRequests: true,
+        itemLimit: 5,
       },
     },
   });

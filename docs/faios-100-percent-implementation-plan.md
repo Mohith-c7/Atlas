@@ -463,10 +463,26 @@ real secrets, DNS, managed dependencies, provider credentials, external scans, a
 
 Goal: ship a practical set of founder workflows that prove the OS value.
 
+### M19.1 Workflow Catalog And GitHub Status Baseline
+
+M19.1 establishes the production workflow catalog shape and ships the first complete live workflow
+set around GitHub:
+
+- Typed shared contracts for founder workflows and readiness states.
+- Business API workflow catalog endpoint with per-founder connection readiness.
+- Dashboard workflow catalog panel with loading, empty, error, planned, not connected, and ready states.
+- Planner coverage for GitHub repository status commands.
+- Real MCP adapter for read-only GitHub repository status.
+- Worker integration coverage for GitHub create-issue and repository-status execution.
+- Redaction checks that ensure provider tokens are not persisted in workflow responses.
+
+Future provider workflows remain explicitly marked as planned until their OAuth scopes, adapters,
+approval behavior, and integration tests are implemented.
+
 ### Workflow Checklist
 
-- [ ] Create GitHub issue from voice.
-- [ ] Summarize GitHub repository status.
+- [x] Create GitHub issue from voice.
+- [x] Summarize GitHub repository status.
 - [ ] Find calendar availability and schedule a meeting.
 - [ ] Summarize unread founder emails.
 - [ ] Draft and approve an email reply.
@@ -476,7 +492,7 @@ Goal: ship a practical set of founder workflows that prove the OS value.
 - [ ] Create a Jira or ClickUp task from a founder command.
 - [ ] Draft and approve a WhatsApp Business message.
 - [ ] Use memory to personalize a follow-up.
-- [ ] Recover gracefully when an integration is disconnected.
+- [x] Recover gracefully when an integration is disconnected.
 
 ### Acceptance Criteria
 

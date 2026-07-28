@@ -8,13 +8,61 @@ from faios_ai_orchestrator.features.planning.schemas import (
 
 _CAPABILITY_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("calendar.schedule", ("calendar", "meeting", "schedule", "call", "invite")),
-    ("communication.send", ("send", "email", "message", "slack", "whatsapp", "notify")),
+    (
+        "communication.send",
+        (
+            "send",
+            "draft email",
+            "draft reply",
+            "reply to",
+            "post slack",
+            "slack update",
+            "whatsapp message",
+            "notify",
+        ),
+    ),
     ("task.create", ("task", "todo", "follow up", "remind", "assign")),
     ("knowledge.search", ("find", "search", "summarize", "summary", "research")),
-    ("repository.createIssue", ("github", "issue", "bug", "repo", "repository")),
+    (
+        "repository.summarizeStatus",
+        (
+            "repo status",
+            "repository status",
+            "github status",
+            "summarize github",
+            "summarize repository",
+            "summarize repo",
+            "pull request",
+            "open issues",
+            "open bugs",
+        ),
+    ),
+    (
+        "repository.createIssue",
+        (
+            "create github issue",
+            "create a github issue",
+            "open github issue",
+            "open a github issue",
+            "create an issue",
+            "create issue",
+            "open an issue",
+            "open issue",
+        ),
+    ),
 )
 
-_HIGH_RISK_KEYWORDS = ("delete", "remove", "cancel", "pay", "purchase", "send", "email", "message")
+_HIGH_RISK_KEYWORDS = (
+    "delete",
+    "remove",
+    "cancel",
+    "pay",
+    "purchase",
+    "send",
+    "post",
+    "reply",
+    "notify",
+)
 
 
 def create_mock_plan(request: PlanRequest) -> PlanResponse:
@@ -51,6 +99,15 @@ def _select_capabilities(
     if not available:
         return []
 
+    if _is_repository_summary_intent(lowered_text):
+        if repository_status_match := available.get("repository.summarizeStatus"):
+            return [repository_status_match]
+
+        if knowledge_search_match := available.get("knowledge.search"):
+            return [knowledge_search_match]
+
+        return []
+
     matched_capabilities = [
         capability_definition
         for capability, keywords in _CAPABILITY_KEYWORDS
@@ -59,7 +116,17 @@ def _select_capabilities(
     ]
 
     if matched_capabilities:
-        return matched_capabilities
+        provider_specific_matches = [
+            capability
+            for capability in matched_capabilities
+            if capability.key != "knowledge.search"
+        ]
+
+        repository_status_match = available.get("repository.summarizeStatus")
+        if repository_status_match and repository_status_match in provider_specific_matches:
+            return [repository_status_match]
+
+        return provider_specific_matches or matched_capabilities
 
     if "knowledge.search" in available:
         return [available["knowledge.search"]]
@@ -75,6 +142,23 @@ def _normalize_available_capabilities(
         for capability in available_capabilities
         if capability.status == "available"
     }
+
+
+def _is_repository_summary_intent(lowered_text: str) -> bool:
+    summary_terms = ("summarize", "summary", "status", "what is open", "what's open")
+    repository_terms = (
+        "github",
+        "repo",
+        "repository",
+        "pull request",
+        "pull requests",
+        "open issues",
+        "open bugs",
+    )
+
+    return any(term in lowered_text for term in summary_terms) and any(
+        term in lowered_text for term in repository_terms
+    )
 
 
 def _requires_approval(lowered_text: str, capabilities: list[AvailableCapability]) -> bool:
@@ -102,7 +186,7 @@ def _build_steps(
                 capability=capability.key,
                 provider=capability.provider,
                 requires_approval=requires_approval or capability.requires_approval,
-                reason="This phase plans the MCP capability without executing external tools.",
+                reason=_build_step_reason(capability.key),
                 execution_payload=_build_execution_payload(
                     capability.key, normalized_text, lowered_text
                 ),
@@ -115,6 +199,13 @@ def _build_steps(
 def _build_execution_payload(
     capability_key: str, normalized_text: str, lowered_text: str
 ) -> dict[str, object] | None:
+    if capability_key == "repository.summarizeStatus":
+        return {
+            "includeIssues": True,
+            "includePullRequests": True,
+            "itemLimit": 5,
+        }
+
     if capability_key != "repository.createIssue":
         return None
 
@@ -134,6 +225,16 @@ def _build_execution_payload(
         payload["labels"] = labels
 
     return payload
+
+
+def _build_step_reason(capability_key: str) -> str:
+    if capability_key == "repository.createIssue":
+        return "Creating a repository issue changes GitHub and requires founder approval."
+
+    if capability_key == "repository.summarizeStatus":
+        return "Repository status is read-only and can run without approval."
+
+    return "This phase plans the MCP capability through the founder workflow catalog."
 
 
 def _build_github_issue_title(normalized_text: str) -> str:

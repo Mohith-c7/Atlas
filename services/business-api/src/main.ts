@@ -10,6 +10,7 @@ import { healthRoutes } from "./features/health/index.js";
 import { integrationRoutes } from "./features/integrations/index.js";
 import { memoryRoutes } from "./features/memory/index.js";
 import { mcpCapabilityRoutes } from "./features/mcp-capabilities/index.js";
+import { workflowRoutes } from "./features/workflows/index.js";
 import { abuseControlPlugin } from "./lib/abuse-control.js";
 import { accessLogPlugin } from "./lib/access-log.js";
 import { correlationPlugin } from "./lib/correlation.js";
@@ -39,6 +40,7 @@ await server.register(approvalRoutes);
 await server.register(integrationRoutes);
 await server.register(memoryRoutes);
 await server.register(mcpCapabilityRoutes);
+await server.register(workflowRoutes);
 await server.register(commandRoutes);
 
 const port = Number(process.env.PORT ?? 4000);

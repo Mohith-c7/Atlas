@@ -8,7 +8,7 @@ import type {
 import type { Prisma, PrismaClient } from "@faios/database";
 import { CredentialVaultRepository } from "./credential-vault.repository.js";
 
-const githubCapabilityKeys = ["repository.createIssue"] as const;
+const githubCapabilityKeys = ["repository.createIssue", "repository.summarizeStatus"] as const;
 
 type IntegrationConnectionRecord = Awaited<
   ReturnType<PrismaClient["integrationConnection"]["findMany"]>
