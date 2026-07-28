@@ -283,9 +283,9 @@ Goal: make the product coherent, fast, and trustworthy for daily founder use.
 
 - [ ] Add first-run onboarding.
 - [ ] Add integration setup checklist.
-- [ ] Add command history page.
-- [ ] Add command detail page.
-- [ ] Add execution detail page.
+- [x] Add command history page.
+- [x] Add command detail page.
+- [x] Add execution detail page.
 - [ ] Add approval inbox improvements.
 - [ ] Add approval diff and payload summary views.
 - [ ] Add command retry flow.
@@ -842,6 +842,27 @@ status without adding new backend contracts.
 - A founder can quickly tell whether the console needs a decision, is executing work,
   lacks tool coverage, or has usable context.
 - The snapshot degrades through existing query loading/error states without adding new APIs.
+
+### M15.3 Command History And Detail
+
+M15.3 adds routed founder UX for reviewing prior commands and inspecting execution details without
+introducing new backend contracts.
+
+### M15.3 Checklist
+
+- [x] Add `/commands` route for the founder execution ledger.
+- [x] Add `/commands/[commandId]` route for command-level detail.
+- [x] Link the dashboard execution timeline to the full command history.
+- [x] Render invocation status, retry timing, provider, request payload, response payload, and
+      failure summaries in the detail view.
+- [x] Preserve loading, empty, error, and not-found states using existing execution hooks.
+- [x] Keep the slice frontend-only and avoid backend contract drift.
+
+### M15.3 Completion Gate
+
+- A founder can move from the dashboard to full command history.
+- A founder can inspect one command's tool invocations and failure context.
+- Routes build through Next.js App Router type generation.
 
 ## Fourteenth Next Implementation Slice
 
