@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "ops:memory-vector:replay": "tsx src/ops/replay-memory-vector-jobs.ts",
     "start": "node --import tsx src/main.ts",
-    "test": "echo \"No tests yet\"",
+    "test": "tsx src/integration/rabbitmq-reliability.integration.ts",
     "test:integration": "tsx src/integration/execution-runtime.integration.ts && tsx src/integration/github-provider.integration.ts && tsx src/integration/memory-vector-runtime.integration.ts",
     "typecheck": "tsc --noEmit"
   },

@@ -33,9 +33,16 @@ export function createCorsPolicy(): FastifyCorsOptions {
   const allowedOrigins = readAllowedCorsOrigins();
 
   return {
-    allowedHeaders: ["authorization", "content-type", "stripe-signature", "x-correlation-id"],
+    allowedHeaders: [
+      "authorization",
+      "content-type",
+      "stripe-signature",
+      "traceparent",
+      "x-correlation-id",
+      "x-trace-id",
+    ],
     credentials: true,
-    exposedHeaders: ["retry-after", "x-correlation-id"],
+    exposedHeaders: ["retry-after", "traceparent", "x-correlation-id", "x-trace-id"],
     maxAge: 600,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     origin(origin, callback) {

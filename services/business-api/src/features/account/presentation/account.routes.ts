@@ -1,6 +1,7 @@
 import { updateFounderAccountRequestSchema } from "@faios/contracts";
 import { getPrismaClient } from "@faios/database";
 import type { FastifyPluginCallback } from "fastify";
+import { recordRequestAuditEventSafely } from "../../../lib/audit-log.js";
 import { sendError } from "../../../lib/errors.js";
 import { GetFounderAccountUseCase } from "../application/get-founder-account.use-case.js";
 import { UpdateFounderAccountUseCase } from "../application/update-founder-account.use-case.js";
@@ -38,7 +39,8 @@ export const accountRoutes: FastifyPluginCallback = (server, _options, done) => 
       });
     }
 
-    const useCase = new UpdateFounderAccountUseCase(getPrismaClient());
+    const database = getPrismaClient();
+    const useCase = new UpdateFounderAccountUseCase(database);
 
     try {
       const response = await useCase.execute(
@@ -54,6 +56,14 @@ export const accountRoutes: FastifyPluginCallback = (server, _options, done) => 
         },
         "Founder account updated",
       );
+      recordRequestAuditEventSafely(database, request, {
+        action: "account.update",
+        resourceType: "founder_account",
+        resourceId: response.account.id,
+        metadata: {
+          updatedFields: Object.keys(parsed.data),
+        },
+      });
 
       return reply.status(200).send(response);
     } catch (error) {

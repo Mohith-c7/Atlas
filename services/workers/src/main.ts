@@ -1,5 +1,6 @@
 import { createLogger } from "@faios/logger";
 import { getPrismaClient } from "@faios/database";
+import { serverEnvSchema } from "@faios/env";
 import { ExecutionRepository } from "./execution/execution.repository.js";
 import { ExecutionWorker } from "./execution/execution-worker.js";
 import { ExecutionPollingLoop } from "./execution/execution-polling-loop.js";
@@ -16,21 +17,17 @@ import { MemoryVectorJobMetrics } from "./memory-vector/memory-vector-job.metric
 import { startWorkerMetricsServer } from "./observability/worker-metrics-server.js";
 
 const logger = createLogger("workers");
+const env = serverEnvSchema.parse(process.env);
 const database = getPrismaClient();
 
-const executionLoopEnabled = process.env.WORKER_EXECUTION_LOOP_ENABLED === "true";
-const rabbitMqConsumerEnabled = process.env.WORKER_RABBITMQ_CONSUMER_ENABLED === "true";
-const pollIntervalMs = Number(process.env.WORKER_EXECUTION_POLL_INTERVAL_MS ?? 5000);
-const memoryVectorLoopEnabled = process.env.WORKER_MEMORY_VECTOR_LOOP_ENABLED === "true";
-const memoryVectorConsumerEnabled =
-  process.env.WORKER_MEMORY_VECTOR_RABBITMQ_CONSUMER_ENABLED === "true";
-const memoryVectorPollIntervalMs = Number(
-  process.env.WORKER_MEMORY_VECTOR_POLL_INTERVAL_MS ?? 5000,
-);
+const executionLoopEnabled = env.WORKER_EXECUTION_LOOP_ENABLED;
+const rabbitMqConsumerEnabled = env.WORKER_RABBITMQ_CONSUMER_ENABLED;
+const pollIntervalMs = env.WORKER_EXECUTION_POLL_INTERVAL_MS;
+const memoryVectorLoopEnabled = env.WORKER_MEMORY_VECTOR_LOOP_ENABLED;
+const memoryVectorConsumerEnabled = env.WORKER_MEMORY_VECTOR_RABBITMQ_CONSUMER_ENABLED;
+const memoryVectorPollIntervalMs = env.WORKER_MEMORY_VECTOR_POLL_INTERVAL_MS;
 const memoryVectorRuntimeEnabled = memoryVectorConsumerEnabled || memoryVectorLoopEnabled;
-const workerMetricsPort = process.env.WORKER_METRICS_PORT
-  ? Number(process.env.WORKER_METRICS_PORT)
-  : null;
+const workerMetricsPort = env.WORKER_METRICS_PORT ?? null;
 
 const worker = new ExecutionWorker(
   new ExecutionRepository(database),
@@ -64,40 +61,33 @@ if (workerMetricsPort !== null) {
 }
 
 if (rabbitMqConsumerEnabled) {
-  const rabbitMqUrl = process.env.RABBITMQ_URL;
-
-  if (!rabbitMqUrl) {
-    throw new Error("RABBITMQ_URL is required when WORKER_RABBITMQ_CONSUMER_ENABLED=true.");
-  }
-
-  await new RabbitMqExecutionConsumer(rabbitMqUrl, worker, logger).start();
+  await new RabbitMqExecutionConsumer(env.RABBITMQ_URL, worker, logger, {
+    concurrency: env.WORKER_EXECUTION_CONCURRENCY,
+  }).start();
   new ExecutionPollingLoop(worker, logger, pollIntervalMs).start();
 } else if (executionLoopEnabled) {
   new ExecutionPollingLoop(worker, logger, pollIntervalMs).start();
 }
-
-const rabbitMqUrl = process.env.RABBITMQ_URL;
 
 await assertMemoryVectorRuntimeReady({
   database,
   logger,
   memoryVectorRuntimeEnabled,
   rabbitMqConsumerEnabled: memoryVectorConsumerEnabled,
-  rabbitMqUrl,
+  rabbitMqUrl: env.RABBITMQ_URL,
 });
 
 if (memoryVectorConsumerEnabled) {
-  if (!rabbitMqUrl) {
-    throw new Error(
-      "RABBITMQ_URL is required when WORKER_MEMORY_VECTOR_RABBITMQ_CONSUMER_ENABLED=true.",
-    );
-  }
-
   await new RabbitMqMemoryVectorConsumer(
-    rabbitMqUrl,
+    env.RABBITMQ_URL,
     memoryVectorWorker,
     logger,
     memoryVectorMetrics,
+    {
+      concurrency: env.MEMORY_VECTOR_WORKER_CONCURRENCY,
+      deadLetterQueueName: env.MEMORY_VECTOR_DEAD_LETTER_QUEUE_NAME,
+      queueName: env.MEMORY_VECTOR_QUEUE_NAME,
+    },
   ).start();
   new MemoryVectorPollingLoop(
     database,

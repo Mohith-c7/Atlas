@@ -1,4 +1,5 @@
 import { redactHttpHeaders, redactSensitiveValue } from "@faios/security";
+import { traceLogFields } from "@faios/observability";
 import type { FastifyPluginCallback } from "fastify";
 import fp from "fastify-plugin";
 
@@ -25,6 +26,7 @@ const accessLogPluginCallback: FastifyPluginCallback = (server, _options, done) 
         method: request.method,
         remoteAddress: request.ip,
         statusCode: reply.statusCode,
+        ...traceLogFields(request.traceContext),
         url: request.url,
       },
       "Business API request completed",
@@ -42,6 +44,7 @@ const accessLogPluginCallback: FastifyPluginCallback = (server, _options, done) 
         }),
         founderId: request.founderSession?.founderId,
         method: request.method,
+        ...traceLogFields(request.traceContext),
         url: request.url,
       },
       "Business API request failed",

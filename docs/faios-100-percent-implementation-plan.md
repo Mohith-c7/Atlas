@@ -318,7 +318,7 @@ Goal: make the platform trustworthy enough for real founder data.
 - [ ] Add CSRF protection where cookie auth is used.
 - [ ] Add webhook signature verification for every provider webhook.
 - [x] Add encrypted secret rotation plan.
-- [ ] Add audit log persistence.
+- [x] Add audit log persistence.
 - [x] Add data retention policy.
 - [ ] Add founder data export.
 - [ ] Add founder data deletion.
@@ -365,10 +365,10 @@ Goal: make FAIOS operable under production traffic.
 - [x] Add dashboard definitions.
 - [x] Add alert rules.
 - [x] Add SLO definitions.
-- [ ] Add RabbitMQ dead-letter queue handling.
-- [ ] Add retry exhaustion workflow.
-- [ ] Add worker concurrency controls.
-- [ ] Add backpressure controls.
+- [x] Add RabbitMQ dead-letter queue handling.
+- [x] Add retry exhaustion workflow.
+- [x] Add worker concurrency controls.
+- [x] Add backpressure controls.
 - [x] Add database backup plan.
 - [x] Add database restore drill.
 - [x] Add Qdrant backup plan.
@@ -389,6 +389,19 @@ Delivered:
 - Memory vector worker metrics exported through the worker scrape endpoint.
 - SLO, dashboard, alert, backup, restore, continuity, load-test, and failure-injection documents.
 - Lightweight HTTP load and planned-failure probe scripts.
+
+### M17.2 Reliability And Traceability Controls
+
+M17.2 adds durable investigation and queue-safety controls needed before real founder data and
+provider actions scale:
+
+- Durable `AuditEvent` persistence for sensitive founder/account, approval, integration, and memory actions.
+- Audit metadata redaction before storage.
+- OpenTelemetry-ready W3C `traceparent`/`x-trace-id` propagation in the Business API.
+- Trace fields on Business API access/error logs for investigation.
+- Configurable RabbitMQ worker concurrency and prefetch caps.
+- Explicit execution and memory-vector dead-letter queues.
+- Focused reliability tests for DLQ bindings, queue depth metrics, concurrency validation, and dead-letter accounting.
 
 References:
 

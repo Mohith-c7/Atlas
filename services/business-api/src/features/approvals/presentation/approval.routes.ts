@@ -1,5 +1,6 @@
 import { getPrismaClient } from "@faios/database";
 import type { FastifyPluginCallback } from "fastify";
+import { recordRequestAuditEventSafely } from "../../../lib/audit-log.js";
 import { sendError } from "../../../lib/errors.js";
 import { DecideApprovalUseCase } from "../application/decide-approval.use-case.js";
 import { ListApprovalsUseCase } from "../application/list-approvals.use-case.js";
@@ -35,7 +36,8 @@ export const approvalRoutes: FastifyPluginCallback = (server, _options, done) =>
     "/api/v1/approvals/:approvalId/approve",
     { schema: { params: approvalIdParamsSchema } },
     async (request, reply) => {
-      const useCase = new DecideApprovalUseCase(getPrismaClient());
+      const database = getPrismaClient();
+      const useCase = new DecideApprovalUseCase(database);
 
       try {
         const response = await useCase.execute(
@@ -52,6 +54,15 @@ export const approvalRoutes: FastifyPluginCallback = (server, _options, done) =>
           },
           "Approval request approved",
         );
+        recordRequestAuditEventSafely(database, request, {
+          action: "approval.decide",
+          resourceType: "approval_request",
+          resourceId: response.approval.id,
+          metadata: {
+            commandId: response.approval.commandId,
+            decision: "APPROVED",
+          },
+        });
         return reply.status(200).send(response);
       } catch (error) {
         request.log.error(
@@ -67,7 +78,8 @@ export const approvalRoutes: FastifyPluginCallback = (server, _options, done) =>
     "/api/v1/approvals/:approvalId/reject",
     { schema: { params: approvalIdParamsSchema } },
     async (request, reply) => {
-      const useCase = new DecideApprovalUseCase(getPrismaClient());
+      const database = getPrismaClient();
+      const useCase = new DecideApprovalUseCase(database);
 
       try {
         const response = await useCase.execute(
@@ -84,6 +96,15 @@ export const approvalRoutes: FastifyPluginCallback = (server, _options, done) =>
           },
           "Approval request rejected",
         );
+        recordRequestAuditEventSafely(database, request, {
+          action: "approval.decide",
+          resourceType: "approval_request",
+          resourceId: response.approval.id,
+          metadata: {
+            commandId: response.approval.commandId,
+            decision: "REJECTED",
+          },
+        });
         return reply.status(200).send(response);
       } catch (error) {
         request.log.error(

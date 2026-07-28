@@ -1,3 +1,5 @@
+import { createHash, randomBytes } from "node:crypto";
+
 export type MetricType = "counter" | "gauge";
 
 export type MetricLabelValue = string | number | boolean;
@@ -11,6 +13,129 @@ export type MetricSample = {
   readonly labels: MetricLabels;
   readonly value: number;
 };
+
+export type TracingConfig = {
+  readonly enabled: boolean;
+  readonly serviceName: string;
+  readonly otlpEndpoint?: string;
+};
+
+export type TraceContext = {
+  readonly traceId: string;
+  readonly spanId: string;
+  readonly parentSpanId?: string;
+  readonly traceFlags: string;
+  readonly traceparent: string;
+  readonly sampled: boolean;
+  readonly source: "incoming" | "generated" | "derived";
+};
+
+export type TraceContextInput = {
+  readonly correlationId?: string;
+  readonly traceId?: string;
+  readonly traceparent?: string;
+  readonly sampled?: boolean;
+};
+
+const traceparentPattern = /^00-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})$/;
+
+export function readTracingConfig(
+  defaultServiceName: string,
+  env: NodeJS.ProcessEnv = process.env,
+): TracingConfig {
+  const endpoint = env.OTEL_EXPORTER_OTLP_ENDPOINT?.trim();
+
+  return {
+    enabled: coerceBoolean(env.FAIOS_TRACING_ENABLED, false),
+    serviceName: env.FAIOS_SERVICE_NAME?.trim() || defaultServiceName,
+    ...(endpoint ? { otlpEndpoint: endpoint } : {}),
+  };
+}
+
+export function createTraceContext(input: TraceContextInput = {}): TraceContext {
+  const parsedTraceparent = parseTraceparent(input.traceparent);
+  const sampled = input.sampled ?? parsedTraceparent?.sampled ?? false;
+  const traceFlags = sampled ? "01" : "00";
+
+  if (parsedTraceparent) {
+    const spanId = createSpanId();
+
+    return {
+      traceId: parsedTraceparent.traceId,
+      parentSpanId: parsedTraceparent.spanId,
+      spanId,
+      traceFlags,
+      traceparent: formatTraceparent(parsedTraceparent.traceId, spanId, traceFlags),
+      sampled,
+      source: "incoming",
+    };
+  }
+
+  const suppliedTraceId = normalizeTraceId(input.traceId);
+  const traceId =
+    suppliedTraceId ??
+    (input.correlationId ? deriveTraceIdFromCorrelationId(input.correlationId) : createTraceId());
+  const spanId = createSpanId();
+
+  return {
+    traceId,
+    spanId,
+    traceFlags,
+    traceparent: formatTraceparent(traceId, spanId, traceFlags),
+    sampled,
+    source: suppliedTraceId ? "incoming" : input.correlationId ? "derived" : "generated",
+  };
+}
+
+export function parseTraceparent(value: string | undefined):
+  | {
+      readonly traceId: string;
+      readonly spanId: string;
+      readonly sampled: boolean;
+    }
+  | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const match = traceparentPattern.exec(value.trim().toLowerCase());
+
+  if (!match) {
+    return undefined;
+  }
+
+  const [, traceId, spanId, flags] = match;
+
+  if (!traceId || !spanId || isZeroHex(traceId) || isZeroHex(spanId)) {
+    return undefined;
+  }
+
+  return {
+    traceId,
+    spanId,
+    sampled: (Number.parseInt(flags ?? "00", 16) & 1) === 1,
+  };
+}
+
+export function traceLogFields(context: TraceContext): {
+  readonly traceId: string;
+  readonly spanId: string;
+  readonly parentSpanId?: string;
+  readonly traceSampled: boolean;
+} {
+  return {
+    traceId: context.traceId,
+    spanId: context.spanId,
+    ...(context.parentSpanId ? { parentSpanId: context.parentSpanId } : {}),
+    traceSampled: context.sampled,
+  };
+}
+
+export function deriveTraceIdFromCorrelationId(correlationId: string): string {
+  const traceId = createHash("sha256").update(correlationId).digest("hex").slice(0, 32);
+
+  return isZeroHex(traceId) ? createTraceId() : traceId;
+}
 
 type StoredMetric = {
   readonly help: string;
@@ -182,4 +307,38 @@ function escapeLabelValue(value: MetricLabelValue): string {
 
 function escapeHelp(value: string): string {
   return value.replaceAll("\\", "\\\\").replaceAll("\n", "\\n");
+}
+
+function coerceBoolean(value: string | undefined, defaultValue: boolean): boolean {
+  if (!value) {
+    return defaultValue;
+  }
+
+  return ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
+}
+
+function createTraceId(): string {
+  return randomBytes(16).toString("hex");
+}
+
+function createSpanId(): string {
+  return randomBytes(8).toString("hex");
+}
+
+function formatTraceparent(traceId: string, spanId: string, traceFlags: string): string {
+  return `00-${traceId}-${spanId}-${traceFlags}`;
+}
+
+function normalizeTraceId(value: string | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const normalized = value.trim().toLowerCase();
+
+  return /^[0-9a-f]{32}$/.test(normalized) && !isZeroHex(normalized) ? normalized : undefined;
+}
+
+function isZeroHex(value: string): boolean {
+  return /^0+$/.test(value);
 }

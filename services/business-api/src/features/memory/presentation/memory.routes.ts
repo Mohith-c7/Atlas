@@ -7,6 +7,7 @@ import {
 } from "@faios/contracts";
 import { getPrismaClient } from "@faios/database";
 import type { FastifyPluginCallback } from "fastify";
+import { recordRequestAuditEventSafely } from "../../../lib/audit-log.js";
 import { sendError } from "../../../lib/errors.js";
 import { ArchiveMemoryItemUseCase } from "../application/archive-memory-item.use-case.js";
 import { DeleteMemoryItemUseCase } from "../application/delete-memory-item.use-case.js";
@@ -83,7 +84,8 @@ export const memoryRoutes: FastifyPluginCallback = (server, _options, done) => {
       });
     }
 
-    const useCase = new ImportMemoryItemsUseCase(getPrismaClient());
+    const database = getPrismaClient();
+    const useCase = new ImportMemoryItemsUseCase(database);
 
     try {
       const response = await useCase.execute({
@@ -100,6 +102,14 @@ export const memoryRoutes: FastifyPluginCallback = (server, _options, done) => {
         },
         "Memory items imported",
       );
+      recordRequestAuditEventSafely(database, request, {
+        action: "memory.import",
+        resourceType: "memory_item",
+        metadata: {
+          importedCount: response.importedCount,
+          replacedExistingCount: response.replacedExistingCount,
+        },
+      });
 
       return reply.status(200).send(response);
     } catch (error) {
@@ -162,7 +172,8 @@ export const memoryRoutes: FastifyPluginCallback = (server, _options, done) => {
       });
     }
 
-    const useCase = new MergeMemoryItemsUseCase(getPrismaClient());
+    const database = getPrismaClient();
+    const useCase = new MergeMemoryItemsUseCase(database);
 
     try {
       const response = await useCase.execute({
@@ -179,6 +190,14 @@ export const memoryRoutes: FastifyPluginCallback = (server, _options, done) => {
         },
         "Memory items merged",
       );
+      recordRequestAuditEventSafely(database, request, {
+        action: "memory.merge",
+        resourceType: "memory_item",
+        resourceId: response.memory.id,
+        metadata: {
+          mergedMemoryIds: response.mergedMemoryIds,
+        },
+      });
 
       return reply.status(200).send(response);
     } catch (error) {
@@ -209,7 +228,8 @@ export const memoryRoutes: FastifyPluginCallback = (server, _options, done) => {
         });
       }
 
-      const useCase = new UpdateMemoryItemUseCase(getPrismaClient());
+      const database = getPrismaClient();
+      const useCase = new UpdateMemoryItemUseCase(database);
 
       try {
         const response = await useCase.execute({
@@ -226,6 +246,14 @@ export const memoryRoutes: FastifyPluginCallback = (server, _options, done) => {
           },
           "Memory item updated",
         );
+        recordRequestAuditEventSafely(database, request, {
+          action: "memory.update",
+          resourceType: "memory_item",
+          resourceId: response.memory.id,
+          metadata: {
+            updatedFields: Object.keys(parsedBody.data),
+          },
+        });
 
         return reply.status(200).send(response);
       } catch (error) {
@@ -246,7 +274,8 @@ export const memoryRoutes: FastifyPluginCallback = (server, _options, done) => {
     "/api/v1/memory/items/:memoryId",
     { schema: { params: memoryItemParamsSchema } },
     async (request, reply) => {
-      const useCase = new DeleteMemoryItemUseCase(getPrismaClient());
+      const database = getPrismaClient();
+      const useCase = new DeleteMemoryItemUseCase(database);
 
       try {
         const response = await useCase.execute({
@@ -262,6 +291,11 @@ export const memoryRoutes: FastifyPluginCallback = (server, _options, done) => {
           },
           "Memory item deleted",
         );
+        recordRequestAuditEventSafely(database, request, {
+          action: "memory.delete",
+          resourceType: "memory_item",
+          resourceId: response.deletedMemoryId,
+        });
 
         return reply.status(200).send(response);
       } catch (error) {
@@ -293,7 +327,8 @@ export const memoryRoutes: FastifyPluginCallback = (server, _options, done) => {
         });
       }
 
-      const useCase = new ArchiveMemoryItemUseCase(getPrismaClient());
+      const database = getPrismaClient();
+      const useCase = new ArchiveMemoryItemUseCase(database);
 
       try {
         const response = await useCase.execute({
@@ -311,6 +346,14 @@ export const memoryRoutes: FastifyPluginCallback = (server, _options, done) => {
           },
           "Memory item archive state changed",
         );
+        recordRequestAuditEventSafely(database, request, {
+          action: "memory.archive",
+          resourceType: "memory_item",
+          resourceId: response.memory.id,
+          metadata: {
+            archived: Boolean(response.memory.archivedAt),
+          },
+        });
 
         return reply.status(200).send(response);
       } catch (error) {
@@ -328,7 +371,8 @@ export const memoryRoutes: FastifyPluginCallback = (server, _options, done) => {
   );
 
   server.post("/api/v1/memory/retention/purge", async (request, reply) => {
-    const useCase = new PurgeExpiredMemoryItemsUseCase(getPrismaClient());
+    const database = getPrismaClient();
+    const useCase = new PurgeExpiredMemoryItemsUseCase(database);
 
     try {
       const response = await useCase.execute({
@@ -343,6 +387,14 @@ export const memoryRoutes: FastifyPluginCallback = (server, _options, done) => {
         },
         "Expired memory items purged",
       );
+      recordRequestAuditEventSafely(database, request, {
+        action: "memory.retention.purge",
+        actorType: "system",
+        resourceType: "memory_item",
+        metadata: {
+          purgedCount: response.purgedCount,
+        },
+      });
 
       return reply.status(200).send(response);
     } catch (error) {

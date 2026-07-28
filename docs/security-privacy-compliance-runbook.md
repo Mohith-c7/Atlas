@@ -100,3 +100,13 @@ This runbook defines the M16 baseline controls for the FAIOS Business API. It is
 - Run `pnpm --filter @faios/business-api typecheck`.
 - Run `pnpm --filter @faios/business-api build`.
 - Run `pnpm --filter @faios/business-api exec tsx src/integration/security-boundary.integration.ts`.
+
+## Audit Ledger
+
+Sensitive founder actions are persisted to `AuditEvent` with founder id, action, actor type,
+resource identity, correlation id, IP address, user agent, and redacted metadata. Current audit
+coverage includes account updates, approval decisions, integration connection/credential lifecycle
+actions, and memory import/update/delete/archive/merge/retention purge flows.
+
+Audit metadata must pass through the shared redaction helpers before persistence. Do not store raw
+provider payloads, tokens, cookies, API keys, or command payloads in audit metadata.

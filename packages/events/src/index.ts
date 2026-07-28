@@ -12,12 +12,23 @@ export type DomainEventType =
   | "memory.updated";
 
 export type AuditAction =
+  | "account.update"
   | "command.create"
   | "command.plan"
   | "approval.decide"
   | "integration.connect"
+  | "integration.disconnect"
+  | "integration.reconnect"
+  | "integration.credential.refresh"
+  | "integration.credential.rotate"
   | "tool.execute"
-  | "memory.write";
+  | "memory.write"
+  | "memory.update"
+  | "memory.delete"
+  | "memory.archive"
+  | "memory.merge"
+  | "memory.import"
+  | "memory.retention.purge";
 
 export type MetricName =
   | "command_planning_duration_ms"

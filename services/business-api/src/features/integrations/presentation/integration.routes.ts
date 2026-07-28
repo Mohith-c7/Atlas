@@ -8,6 +8,7 @@ import {
 } from "@faios/contracts";
 import { getPrismaClient } from "@faios/database";
 import type { FastifyPluginCallback } from "fastify";
+import { recordRequestAuditEventSafely } from "../../../lib/audit-log.js";
 import { sendError } from "../../../lib/errors.js";
 import { CompleteGitHubOAuthUseCase } from "../application/complete-github-oauth.use-case.js";
 import { ConnectGitHubIntegrationUseCase } from "../application/connect-github-integration.use-case.js";
@@ -118,7 +119,8 @@ export const integrationRoutes: FastifyPluginCallback = (server, _options, done)
         });
       }
 
-      const useCase = new DisconnectIntegrationUseCase(getPrismaClient());
+      const database = getPrismaClient();
+      const useCase = new DisconnectIntegrationUseCase(database);
 
       try {
         const response = await useCase.execute({
@@ -136,6 +138,15 @@ export const integrationRoutes: FastifyPluginCallback = (server, _options, done)
           },
           "Integration connection disconnected",
         );
+        recordRequestAuditEventSafely(database, request, {
+          action: "integration.disconnect",
+          resourceType: "integration_connection",
+          resourceId: response.connection.id,
+          metadata: {
+            provider: response.connection.provider,
+            reason: parsed.data.reason,
+          },
+        });
 
         return reply.status(200).send(response);
       } catch (error) {
@@ -167,7 +178,8 @@ export const integrationRoutes: FastifyPluginCallback = (server, _options, done)
         });
       }
 
-      const useCase = new ReconnectIntegrationUseCase(getPrismaClient());
+      const database = getPrismaClient();
+      const useCase = new ReconnectIntegrationUseCase(database);
 
       try {
         const response = await useCase.execute({
@@ -184,6 +196,14 @@ export const integrationRoutes: FastifyPluginCallback = (server, _options, done)
           },
           "Integration connection reconnected",
         );
+        recordRequestAuditEventSafely(database, request, {
+          action: "integration.reconnect",
+          resourceType: "integration_connection",
+          resourceId: response.connection.id,
+          metadata: {
+            provider: response.connection.provider,
+          },
+        });
 
         return reply.status(200).send(response);
       } catch (error) {
@@ -263,7 +283,8 @@ export const integrationRoutes: FastifyPluginCallback = (server, _options, done)
         });
       }
 
-      const useCase = new RefreshIntegrationCredentialUseCase(getPrismaClient());
+      const database = getPrismaClient();
+      const useCase = new RefreshIntegrationCredentialUseCase(database);
 
       try {
         const response = await useCase.execute({
@@ -280,6 +301,16 @@ export const integrationRoutes: FastifyPluginCallback = (server, _options, done)
           },
           "Integration credential refresh attempted",
         );
+        recordRequestAuditEventSafely(database, request, {
+          action: "integration.credential.refresh",
+          resourceType: "integration_connection",
+          resourceId: response.connection.id,
+          metadata: {
+            provider: response.provider,
+            refreshed: response.refreshed,
+            reason: response.reason,
+          },
+        });
 
         return reply.status(200).send(response);
       } catch (error) {
@@ -309,7 +340,8 @@ export const integrationRoutes: FastifyPluginCallback = (server, _options, done)
       });
     }
 
-    const useCase = new RotateGitHubCredentialUseCase(getPrismaClient());
+    const database = getPrismaClient();
+    const useCase = new RotateGitHubCredentialUseCase(database);
 
     try {
       const response = await useCase.execute({
@@ -327,6 +359,15 @@ export const integrationRoutes: FastifyPluginCallback = (server, _options, done)
         },
         "Integration credential rotated",
       );
+      recordRequestAuditEventSafely(database, request, {
+        action: "integration.credential.rotate",
+        resourceType: "integration_connection",
+        resourceId: response.connection.id,
+        metadata: {
+          provider: response.connection.provider,
+          rotatedAt: response.rotatedAt,
+        },
+      });
 
       return reply.status(200).send(response);
     } catch (error) {
@@ -399,7 +440,8 @@ export const integrationRoutes: FastifyPluginCallback = (server, _options, done)
       });
     }
 
-    const useCase = new CompleteGitHubOAuthUseCase(getPrismaClient());
+    const database = getPrismaClient();
+    const useCase = new CompleteGitHubOAuthUseCase(database);
 
     try {
       const response = await useCase.execute(
@@ -419,6 +461,15 @@ export const integrationRoutes: FastifyPluginCallback = (server, _options, done)
         },
         "GitHub OAuth connection completed",
       );
+      recordRequestAuditEventSafely(database, request, {
+        action: "integration.connect",
+        resourceType: "integration_connection",
+        resourceId: response.connection.id,
+        metadata: {
+          provider: response.connection.provider,
+          flow: "oauth_callback",
+        },
+      });
 
       return reply.status(200).send(response);
     } catch (error) {
@@ -446,7 +497,8 @@ export const integrationRoutes: FastifyPluginCallback = (server, _options, done)
       });
     }
 
-    const useCase = new CompleteGitHubOAuthUseCase(getPrismaClient());
+    const database = getPrismaClient();
+    const useCase = new CompleteGitHubOAuthUseCase(database);
 
     try {
       const response = await useCase.execute(
@@ -463,6 +515,15 @@ export const integrationRoutes: FastifyPluginCallback = (server, _options, done)
         },
         "GitHub OAuth connection completed",
       );
+      recordRequestAuditEventSafely(database, request, {
+        action: "integration.connect",
+        resourceType: "integration_connection",
+        resourceId: response.connection.id,
+        metadata: {
+          provider: response.connection.provider,
+          flow: "oauth_complete",
+        },
+      });
 
       return reply.status(200).send(response);
     } catch (error) {
@@ -490,7 +551,8 @@ export const integrationRoutes: FastifyPluginCallback = (server, _options, done)
       });
     }
 
-    const useCase = new ConnectGitHubIntegrationUseCase(getPrismaClient());
+    const database = getPrismaClient();
+    const useCase = new ConnectGitHubIntegrationUseCase(database);
 
     try {
       const response = await useCase.execute(
@@ -507,6 +569,15 @@ export const integrationRoutes: FastifyPluginCallback = (server, _options, done)
         },
         "Integration connection stored",
       );
+      recordRequestAuditEventSafely(database, request, {
+        action: "integration.connect",
+        resourceType: "integration_connection",
+        resourceId: response.connection.id,
+        metadata: {
+          provider: response.connection.provider,
+          flow: "manual_token",
+        },
+      });
 
       return reply.status(201).send(response);
     } catch (error) {

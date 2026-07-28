@@ -53,6 +53,7 @@ try {
     url: "/health",
     headers: {
       origin: "https://app.faios.test",
+      traceparent: "00-11111111111111111111111111111111-2222222222222222-01",
     },
   });
 
@@ -62,6 +63,13 @@ try {
 
   if (healthResponse.headers["x-content-type-options"] !== "nosniff") {
     throw new Error("Security headers were not applied.");
+  }
+
+  if (
+    healthResponse.headers["x-trace-id"] !== "11111111111111111111111111111111" ||
+    typeof healthResponse.headers.traceparent !== "string"
+  ) {
+    throw new Error("Trace context headers were not propagated.");
   }
 
   for (let index = 0; index < 3; index += 1) {

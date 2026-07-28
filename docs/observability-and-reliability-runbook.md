@@ -122,3 +122,15 @@ Rules:
 - Founder scope is mandatory.
 - Use `--all-failed-for-founder` only after confirming impact and dependency recovery.
 - Keep the replay output in the incident notes.
+
+## Trace Context
+
+The Business API accepts `traceparent` and `x-trace-id`, derives a trace id from `x-correlation-id`
+when no trace header is present, and returns `traceparent`, `x-trace-id`, and `x-correlation-id` on
+responses. Set `FAIOS_TRACING_ENABLED=true` to mark generated trace contexts as sampled while the
+platform is still exporter-neutral. `OTEL_EXPORTER_OTLP_ENDPOINT` is reserved for the production
+OpenTelemetry exporter wiring.
+
+RabbitMQ workers now cap concurrency through `WORKER_EXECUTION_CONCURRENCY` and
+`MEMORY_VECTOR_WORKER_CONCURRENCY`. Keep these values aligned with provider rate limits, database
+pool size, and command latency SLOs.

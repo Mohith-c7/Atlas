@@ -97,6 +97,7 @@ model FounderAccount {
   commands            Command[]
   memoryItems         MemoryItem[]
   memoryVectorJobs    MemoryVectorJob[]
+  auditEvents         AuditEvent[]
 }
 
 model BillingCustomer {
@@ -490,4 +491,24 @@ model MemoryVectorJob {
   @@index([founderId, status])
   @@index([status, nextAttemptAt])
   @@index([createdAt])
+}
+
+model AuditEvent {
+  id            String         @id @default(cuid())
+  founderId     String
+  founder       FounderAccount @relation(fields: [founderId], references: [id], onDelete: Cascade)
+  action        String
+  actorType     String
+  resourceType  String?
+  resourceId    String?
+  correlationId String?
+  ipAddress     String?
+  userAgent     String?
+  metadata      Json?
+  createdAt     DateTime       @default(now())
+
+  @@index([founderId, createdAt])
+  @@index([action, createdAt])
+  @@index([resourceType, resourceId])
+  @@index([correlationId])
 }
