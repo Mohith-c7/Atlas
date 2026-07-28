@@ -1,0 +1,43 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: faios-web
+  namespace: faios
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: faios-web
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: faios-business-api
+  namespace: faios
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: faios-business-api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: faios-ai-orchestrator
+  namespace: faios
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: faios-ai-orchestrator
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: faios-workers
+  namespace: faios
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: faios-workers

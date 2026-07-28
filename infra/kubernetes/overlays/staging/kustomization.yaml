@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+images:
+  - name: faios/web
+    newTag: staging
+  - name: faios/business-api
+    newTag: staging
+  - name: faios/ai-orchestrator
+    newTag: staging
+  - name: faios/workers
+    newTag: staging
+patches:
+  - path: configmap.patch.yaml
+  - path: ingress.patch.yaml
+  - path: replicas.patch.yaml

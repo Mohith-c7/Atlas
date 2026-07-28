@@ -5,6 +5,7 @@ metadata:
   namespace: faios
 spec:
   replicas: 2
+  revisionHistoryLimit: 5
   selector:
     matchLabels:
       app: faios-business-api
@@ -13,11 +14,17 @@ spec:
       labels:
         app: faios-business-api
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
       containers:
         - name: business-api
           image: faios/business-api:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 4000
+              name: http
           envFrom:
             - configMapRef:
                 name: faios-config
@@ -29,9 +36,32 @@ spec:
               port: 4000
             initialDelaySeconds: 10
             periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /health/ready
               port: 4000
             initialDelaySeconds: 10
             periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

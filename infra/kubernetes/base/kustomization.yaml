@@ -5,6 +5,10 @@ resources:
   - configmap.yaml
   - secret.example.yaml
   - services.yaml
+  - ingress.yaml
+  - hpa.yaml
+  - pdb.yaml
+  - migration-job.yaml
   - web.deployment.yaml
   - business-api.deployment.yaml
   - ai-orchestrator.deployment.yaml

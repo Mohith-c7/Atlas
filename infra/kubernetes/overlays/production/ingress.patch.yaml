@@ -1,0 +1,32 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: faios
+  namespace: faios
+spec:
+  tls:
+    - hosts:
+        - app.faios.example.com
+        - api.faios.example.com
+      secretName: faios-production-tls
+  rules:
+    - host: app.faios.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: faios-web
+                port:
+                  name: http
+    - host: api.faios.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: faios-business-api
+                port:
+                  name: http

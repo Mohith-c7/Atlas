@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: faios-config
+  namespace: faios
+data:
+  APP_ENV: staging
+  NEXT_PUBLIC_BUSINESS_API_URL: https://api.staging.example.com
+  PUBLIC_WEB_URL: https://app.staging.example.com
+  LOG_LEVEL: info
+  FAIOS_TRACING_ENABLED: "true"
+  FAIOS_SERVICE_NAME: faios-staging

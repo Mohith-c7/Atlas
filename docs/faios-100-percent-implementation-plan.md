@@ -422,20 +422,36 @@ Goal: deploy the system predictably and safely.
 
 ### Implementation Checklist
 
-- [ ] Verify all production Docker images build.
-- [ ] Add Kubernetes environment overlays.
-- [ ] Add ingress configuration.
-- [ ] Add TLS configuration.
-- [ ] Add resource requests and limits.
-- [ ] Add horizontal pod autoscaling.
-- [ ] Add pod disruption budgets.
-- [ ] Add migration job.
-- [ ] Add secret manager integration plan.
-- [ ] Add deployment rollback plan.
-- [ ] Add production smoke test.
-- [ ] Add staging environment.
-- [ ] Add release promotion checklist.
-- [ ] Add infrastructure documentation.
+- [x] Verify all production Docker images build.
+- [x] Add Kubernetes environment overlays.
+- [x] Add ingress configuration.
+- [x] Add TLS configuration.
+- [x] Add resource requests and limits.
+- [x] Add horizontal pod autoscaling.
+- [x] Add pod disruption budgets.
+- [x] Add migration job.
+- [x] Add secret manager integration plan.
+- [x] Add deployment rollback plan.
+- [x] Add production smoke test.
+- [x] Add staging environment.
+- [x] Add release promotion checklist.
+- [x] Add infrastructure documentation.
+
+### M18.1 Deployment Readiness Baseline
+
+M18.1 turns the existing local/runtime architecture into a deployable production baseline:
+
+- Production Dockerfiles for web, Business API, workers, and AI orchestrator.
+- Kubernetes base workload hardening with non-root pods, resource requests/limits, probes, HPAs,
+  PDBs, ingress, TLS placeholders, and worker metrics service.
+- Staging and production kustomize overlays with environment-specific hosts, image tags, replicas,
+  and tracing posture.
+- Prisma migration job manifest.
+- Production smoke test script.
+- Deployment runbook, rollback guidance, secret-manager plan, and release promotion checklist.
+
+This is deployment-ready scaffolding, not full production approval. Real production still requires
+real secrets, DNS, managed dependencies, provider credentials, external scans, and a staging soak.
 
 ### Acceptance Criteria
 
