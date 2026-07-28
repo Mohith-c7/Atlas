@@ -5,6 +5,7 @@ export type ApprovalPayload = {
   provider?: string;
   reason: string;
   commandSummary?: string;
+  executionPayload?: unknown;
 };
 
 export type ApprovalRequest = {

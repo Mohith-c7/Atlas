@@ -40,6 +40,7 @@ function normalizePayload(value: unknown): ApprovalPayload | undefined {
     provider: typeof value.provider === "string" ? value.provider : undefined,
     reason: value.reason,
     commandSummary: typeof value.commandSummary === "string" ? value.commandSummary : undefined,
+    executionPayload: value.executionPayload,
   };
 }
 

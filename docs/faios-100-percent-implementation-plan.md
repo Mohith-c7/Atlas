@@ -286,8 +286,8 @@ Goal: make the product coherent, fast, and trustworthy for daily founder use.
 - [x] Add command history page.
 - [x] Add command detail page.
 - [x] Add execution detail page.
-- [ ] Add approval inbox improvements.
-- [ ] Add approval diff and payload summary views.
+- [x] Add approval inbox improvements.
+- [x] Add approval diff and payload summary views.
 - [ ] Add command retry flow.
 - [ ] Add command cancellation flow.
 - [ ] Add settings page.
@@ -863,6 +863,26 @@ introducing new backend contracts.
 - A founder can move from the dashboard to full command history.
 - A founder can inspect one command's tool invocations and failure context.
 - Routes build through Next.js App Router type generation.
+
+### M15.4 Approval Payload Review
+
+M15.4 improves the founder approval inbox so sensitive actions can be reviewed with the redacted
+provider payload before approval.
+
+### M15.4 Checklist
+
+- [x] Preserve `executionPayload` in the web approval API normalizer.
+- [x] Show why approval is required separately from command summary.
+- [x] Render a compact provider payload summary for common structured actions.
+- [x] Add expandable redacted JSON payload inspection.
+- [x] Improve pending decision button states while approve/reject mutations run.
+- [x] Keep the slice frontend-only and rely on existing backend redaction.
+
+### M15.4 Completion Gate
+
+- A founder can see the actual redacted action payload before approving.
+- Approval cards remain useful when no provider payload is attached.
+- The approval inbox keeps loading, empty, error, and refreshing states.
 
 ## Fourteenth Next Implementation Slice
 

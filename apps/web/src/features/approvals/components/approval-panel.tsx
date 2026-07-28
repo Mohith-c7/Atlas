@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@faios/ui";
-import { ApprovalApiError, type ApprovalRequest } from "../types/approval";
+import { ApprovalApiError, type ApprovalPayload, type ApprovalRequest } from "../types/approval";
 import { useApproveRequest, useApprovals, useRejectRequest } from "../hooks/use-approvals";
 
 function formatError(error: Error) {
@@ -14,12 +14,116 @@ function formatError(error: Error) {
   return error.message;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object";
+}
+
+function humanizeKey(value: string) {
+  return value
+    .replaceAll(".", " ")
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function stringifyPayload(payload: unknown) {
+  if (payload === undefined || payload === null) {
+    return "No execution payload recorded.";
+  }
+
+  try {
+    return JSON.stringify(payload, null, 2);
+  } catch {
+    return "Execution payload could not be rendered.";
+  }
+}
+
+function getPayloadPreview(payload: ApprovalPayload | undefined) {
+  const executionPayload = payload?.executionPayload;
+
+  if (!isRecord(executionPayload)) {
+    return undefined;
+  }
+
+  if (typeof executionPayload.title === "string") {
+    const labels = Array.isArray(executionPayload.labels)
+      ? executionPayload.labels.filter((label): label is string => typeof label === "string")
+      : [];
+
+    return {
+      title: executionPayload.title,
+      detail:
+        typeof executionPayload.body === "string"
+          ? executionPayload.body
+          : labels.length > 0
+            ? `Labels: ${labels.join(", ")}`
+            : "External action payload is ready for review.",
+      labels,
+    };
+  }
+
+  const keys = Object.keys(executionPayload).slice(0, 5);
+
+  return {
+    title: "Structured action payload",
+    detail: keys.length > 0 ? `Fields: ${keys.join(", ")}` : "Payload is empty.",
+    labels: [],
+  };
+}
+
+function PayloadPreview({ payload }: Readonly<{ payload: ApprovalPayload | undefined }>) {
+  const preview = getPayloadPreview(payload);
+
+  if (!payload?.executionPayload) {
+    return (
+      <div className="rounded-md border border-border bg-white p-3 text-xs leading-5 text-muted">
+        No provider payload was attached to this approval. FAIOS will use the planned capability
+        metadata if this action is approved.
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-3">
+      {preview ? (
+        <div className="rounded-md border border-border bg-white p-3">
+          <p className="text-sm font-semibold text-foreground">{preview.title}</p>
+          <p className="mt-2 line-clamp-4 text-xs leading-5 text-muted">{preview.detail}</p>
+          {preview.labels.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {preview.labels.map((label) => (
+                <span
+                  className="rounded-md border border-border bg-background px-2 py-1 text-xs text-muted"
+                  key={label}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      <details className="rounded-md border border-border bg-white p-3">
+        <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-muted">
+          Redacted payload
+        </summary>
+        <pre className="mt-3 max-h-64 overflow-auto rounded-md bg-background p-3 text-xs leading-5 text-muted">
+          {stringifyPayload(payload.executionPayload)}
+        </pre>
+      </details>
+    </div>
+  );
+}
+
 function ApprovalCard({ approval }: Readonly<{ approval: ApprovalRequest }>) {
   const approve = useApproveRequest();
   const reject = useRejectRequest();
-  const isDeciding = approve.isPending || reject.isPending;
+  const isApproving = approve.isPending;
+  const isRejecting = reject.isPending;
+  const isDeciding = isApproving || isRejecting;
   const capability = approval.payload?.capability ?? "approval.required";
   const provider = approval.payload?.provider;
+  const riskReason = approval.payload?.reason ?? approval.reason;
 
   return (
     <article className="rounded-md border border-border bg-background p-4">
@@ -28,21 +132,29 @@ function ApprovalCard({ approval }: Readonly<{ approval: ApprovalRequest }>) {
           <p className="text-xs font-medium uppercase tracking-wide text-accent">
             Approval required
           </p>
-          <h3 className="mt-1 text-sm font-semibold text-foreground">{capability}</h3>
-          {provider ? <p className="mt-1 text-xs text-muted">{provider}</p> : null}
+          <h3 className="mt-1 text-sm font-semibold text-foreground">{humanizeKey(capability)}</h3>
+          <p className="mt-1 text-xs text-muted">{provider ?? "Provider pending"}</p>
         </div>
         <span className="rounded-full border border-accent/20 bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent">
           Pending
         </span>
       </div>
 
-      <p className="mt-3 text-sm leading-6 text-muted">{approval.reason}</p>
+      <div className="mt-3 grid gap-3">
+        <div className="rounded-md border border-accent/20 bg-accent/10 p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-accent">Why approval</p>
+          <p className="mt-2 text-sm leading-6 text-muted">{riskReason}</p>
+        </div>
 
-      {approval.payload?.commandSummary ? (
-        <p className="mt-3 rounded-md border border-border bg-white p-3 text-xs leading-5 text-muted">
-          {approval.payload.commandSummary}
-        </p>
-      ) : null}
+        {approval.payload?.commandSummary ? (
+          <div className="rounded-md border border-border bg-white p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">Command plan</p>
+            <p className="mt-2 text-sm leading-6 text-muted">{approval.payload.commandSummary}</p>
+          </div>
+        ) : null}
+
+        <PayloadPreview payload={approval.payload} />
+      </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-muted">
@@ -57,7 +169,7 @@ function ApprovalCard({ approval }: Readonly<{ approval: ApprovalRequest }>) {
             onClick={() => reject.mutate(approval.id)}
             type="button"
           >
-            Reject
+            {isRejecting ? "Rejecting" : "Reject"}
           </button>
           <button
             className="inline-flex min-h-9 items-center justify-center rounded-md bg-primary px-3 text-xs font-semibold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted"
@@ -65,7 +177,7 @@ function ApprovalCard({ approval }: Readonly<{ approval: ApprovalRequest }>) {
             onClick={() => approve.mutate(approval.id)}
             type="button"
           >
-            Approve
+            {isApproving ? "Approving" : "Approve"}
           </button>
         </div>
       </div>
