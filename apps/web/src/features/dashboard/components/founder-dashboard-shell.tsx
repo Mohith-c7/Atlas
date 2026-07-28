@@ -6,9 +6,11 @@ import { ExecutionTimelinePanel } from "@/features/executions";
 import { GitHubConnectionPanel, IntegrationCatalogPanel } from "@/features/integrations";
 import { MemoryManagementPanel } from "@/features/memory";
 import { CapabilityReadinessPanel } from "@/features/mcp";
+import { FounderOperatingSnapshot } from "./founder-operating-snapshot";
 
 const navigationItems = [
   { href: "#command-center", label: "Command" },
+  { href: "#snapshot", label: "Snapshot" },
   { href: "#operations", label: "Operations" },
   { href: "#integrations", label: "Integrations" },
   { href: "#memory", label: "Memory" },
@@ -114,6 +116,10 @@ export function FounderDashboardShell() {
           </div>
 
           <CommandComposer />
+        </section>
+
+        <section className="scroll-mt-28" id="snapshot">
+          <FounderOperatingSnapshot />
         </section>
 
         <section className="grid scroll-mt-28 gap-5" id="operations">

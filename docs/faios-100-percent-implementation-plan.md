@@ -230,17 +230,17 @@ Goal: move memory vector synchronization and other side-effect-heavy runtime wor
 - [x] Add exponential backoff with bounded retries for transient embedding and Qdrant failures.
 - [x] Route exhausted RabbitMQ-consumed jobs to a dead-letter queue with redacted diagnostic metadata.
 - [ ] Persist vector sync status, last error class, and last synced timestamp for operator visibility.
-- [ ] Add safe replay tooling for failed memory vector sync jobs.
+- [x] Add safe replay tooling for failed memory vector sync jobs.
 
 ### Runtime Reliability Checklist
 
 - [x] Standardize memory vector job envelopes with founder ids, durable job ids, schema versions, and payload IDs only.
-- [ ] Add worker startup checks for RabbitMQ, Qdrant, embedding provider configuration, and database access.
+- [x] Add worker startup checks for RabbitMQ, Qdrant, embedding provider configuration, and database access.
 - [x] Add graceful shutdown that stops consumption loops and closes shared database clients.
 - [x] Add structured logs for consume, retry, failure, and success events.
-- [ ] Add metrics for queue depth, processing latency, retry count, dead-letter count, and provider latency.
+- [x] Add in-process metrics for queue depth, processing latency, retry count, dead-letter count, and provider latency.
 - [x] Add integration tests for durable enqueue, success, retry, idempotent replay, and Qdrant deletion.
-- [ ] Document local and Kubernetes operational runbooks for memory vector sync.
+- [x] Document local and Kubernetes operational runbooks for memory vector sync.
 
 ### Acceptance Criteria
 
@@ -250,6 +250,30 @@ Goal: move memory vector synchronization and other side-effect-heavy runtime wor
 - Operators can inspect sync status and replay failed jobs without corrupting memory data.
 - The API process no longer owns long-running embedding/Qdrant side effects except in explicit local fallback mode.
 - Worker and provider failures are visible, retry-safe, and redacted.
+- Memory vector operations have a production runbook at
+  [`docs/memory-vector-runtime-runbook.md`](memory-vector-runtime-runbook.md).
+
+### Memory Vector Replay Runbook
+
+Use the worker replay command when a known provider outage or configuration issue has been fixed and failed vector sync jobs need to be retried. The command is founder-scoped and dry-run by default.
+
+```bash
+pnpm --filter @faios/workers ops:memory-vector:replay -- --founder-id <founder-id> --job-id <job-id>
+```
+
+To replay the selected failed jobs, add `--execute`:
+
+```bash
+pnpm --filter @faios/workers ops:memory-vector:replay -- --founder-id <founder-id> --job-id <job-id> --execute
+```
+
+For bulk replay, operators must explicitly opt into all failed jobs for one founder. Use `--limit` to keep batches bounded:
+
+```bash
+pnpm --filter @faios/workers ops:memory-vector:replay -- --founder-id <founder-id> --all-failed-for-founder --limit 25 --execute
+```
+
+The tool only resets `FAILED` `MemoryVectorJob` rows to `PENDING`; it does not call embedding providers, mutate memory content, or bypass founder scoping. The polling worker or RabbitMQ-backed worker runtime performs the actual replay.
 
 ## Milestone M15: Founder Product UX
 
@@ -800,6 +824,25 @@ M15.1 adds the founder console shell that organizes command, operations, integra
 - `pnpm test`
 - `pnpm build`
 
+### M15.2 Founder Operating Snapshot
+
+M15.2 adds a bounded founder console presentation pass that surfaces operationally useful
+status without adding new backend contracts.
+
+### M15.2 Checklist
+
+- [x] Add a dashboard-owned operating snapshot fed by existing TanStack Query hooks.
+- [x] Surface pending approval count, active command work, failed command review state,
+      connected tools, available MCP capabilities, active memories, sessions, and billing status.
+- [x] Keep the slice presentation-only and avoid auth, business API, worker, and replay changes.
+- [x] Preserve the existing dashboard sections and component ownership boundaries.
+
+### M15.2 Completion Gate
+
+- A founder can quickly tell whether the console needs a decision, is executing work,
+  lacks tool coverage, or has usable context.
+- The snapshot degrades through existing query loading/error states without adding new APIs.
+
 ## Fourteenth Next Implementation Slice
 
 M13.2 closes the remaining founder memory intelligence gaps: semantic search, import/restore, retention/archive, and merge/deduplication.
@@ -870,8 +913,9 @@ M14.1 introduces the production contract for durable memory vector jobs before b
 - [x] Move embedding and Qdrant sync side effects behind durable jobs.
 - [x] Add dead-letter handling for RabbitMQ-exhausted jobs.
 - [x] Add runtime integration coverage for retry and idempotent replay.
-- [ ] Add replay tooling for failed memory vector jobs.
+- [x] Add replay tooling for failed memory vector jobs.
 - [ ] Add dedicated RabbitMQ DLQ integration coverage in CI once RabbitMQ-backed integration tests are enabled by default.
+- [x] Add memory vector runtime runbook for local startup, incident response, and replay safety.
 
 ### M14.1 Completion Gate
 

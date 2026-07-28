@@ -8,6 +8,7 @@
     "clean": "rimraf dist .turbo",
     "dev": "tsx watch src/main.ts",
     "lint": "eslint .",
+    "ops:memory-vector:replay": "tsx src/ops/replay-memory-vector-jobs.ts",
     "start": "node --import tsx src/main.ts",
     "test": "echo \"No tests yet\"",
     "test:integration": "tsx src/integration/execution-runtime.integration.ts && tsx src/integration/github-provider.integration.ts && tsx src/integration/memory-vector-runtime.integration.ts",

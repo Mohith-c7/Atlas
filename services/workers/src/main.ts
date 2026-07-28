@@ -11,6 +11,8 @@ import { MemoryVectorJobRepository } from "./memory-vector/memory-vector-job.rep
 import { MemoryVectorWorker } from "./memory-vector/memory-vector-worker.js";
 import { RabbitMqMemoryVectorConsumer } from "./memory-vector/rabbitmq-memory-vector-consumer.js";
 import { MemoryVectorPollingLoop } from "./memory-vector/memory-vector-polling-loop.js";
+import { assertMemoryVectorRuntimeReady } from "./memory-vector/memory-vector-runtime-readiness.js";
+import { MemoryVectorJobMetrics } from "./memory-vector/memory-vector-job.metrics.js";
 
 const logger = createLogger("workers");
 const database = getPrismaClient();
@@ -24,6 +26,7 @@ const memoryVectorConsumerEnabled =
 const memoryVectorPollIntervalMs = Number(
   process.env.WORKER_MEMORY_VECTOR_POLL_INTERVAL_MS ?? 5000,
 );
+const memoryVectorRuntimeEnabled = memoryVectorConsumerEnabled || memoryVectorLoopEnabled;
 
 const worker = new ExecutionWorker(
   new ExecutionRepository(database),
@@ -35,7 +38,14 @@ const worker = new ExecutionWorker(
   ),
   logger,
 );
-const memoryVectorWorker = new MemoryVectorWorker(new MemoryVectorJobRepository(database), logger);
+const memoryVectorMetrics = new MemoryVectorJobMetrics();
+const memoryVectorWorker = new MemoryVectorWorker(
+  new MemoryVectorJobRepository(database),
+  logger,
+  undefined,
+  undefined,
+  memoryVectorMetrics,
+);
 
 if (rabbitMqConsumerEnabled) {
   const rabbitMqUrl = process.env.RABBITMQ_URL;
@@ -50,16 +60,29 @@ if (rabbitMqConsumerEnabled) {
   new ExecutionPollingLoop(worker, logger, pollIntervalMs).start();
 }
 
-if (memoryVectorConsumerEnabled) {
-  const rabbitMqUrl = process.env.RABBITMQ_URL;
+const rabbitMqUrl = process.env.RABBITMQ_URL;
 
+await assertMemoryVectorRuntimeReady({
+  database,
+  logger,
+  memoryVectorRuntimeEnabled,
+  rabbitMqConsumerEnabled: memoryVectorConsumerEnabled,
+  rabbitMqUrl,
+});
+
+if (memoryVectorConsumerEnabled) {
   if (!rabbitMqUrl) {
     throw new Error(
       "RABBITMQ_URL is required when WORKER_MEMORY_VECTOR_RABBITMQ_CONSUMER_ENABLED=true.",
     );
   }
 
-  await new RabbitMqMemoryVectorConsumer(rabbitMqUrl, memoryVectorWorker, logger).start();
+  await new RabbitMqMemoryVectorConsumer(
+    rabbitMqUrl,
+    memoryVectorWorker,
+    logger,
+    memoryVectorMetrics,
+  ).start();
   new MemoryVectorPollingLoop(
     database,
     memoryVectorWorker,

@@ -5,6 +5,7 @@ import {
 } from "@faios/memory-vector";
 import type { MemoryEmbeddingProvider } from "@faios/memory-vector";
 import type { MemoryVectorJobRepository } from "./memory-vector-job.repository.js";
+import { MemoryVectorJobMetrics } from "./memory-vector-job.metrics.js";
 
 type WorkerLogger = {
   info(payload: unknown, message: string): void;
@@ -18,12 +19,15 @@ export class MemoryVectorWorker {
     private readonly logger: WorkerLogger,
     private readonly embeddingProvider: MemoryEmbeddingProvider = createMemoryEmbeddingProvider(),
     private readonly vectorRepository = new QdrantMemoryVectorRepository(),
+    private readonly metrics = new MemoryVectorJobMetrics(),
   ) {}
 
   public async runJob(jobId: string): Promise<{ processed: boolean; status?: string }> {
+    const startedAt = Date.now();
     const job = await this.repository.claimJob(jobId);
 
     if (!job) {
+      this.metrics.recordProcessed("skipped", Date.now() - startedAt);
       return { processed: false };
     }
 
@@ -39,9 +43,7 @@ export class MemoryVectorWorker {
             founderId: job.founderId,
             kind: memory.kind.toLowerCase(),
             content: memory.content,
-            vector: await this.embeddingProvider.embedText(
-              `${memory.kind.toLowerCase()}\n${memory.content}`,
-            ),
+            vector: await this.embedMemoryText(`${memory.kind.toLowerCase()}\n${memory.content}`),
           })),
         );
 
@@ -75,6 +77,7 @@ export class MemoryVectorWorker {
         "Memory vector job processed",
       );
 
+      this.metrics.recordProcessed("succeeded", Date.now() - startedAt);
       return { processed: true, status: "succeeded" };
     } catch (error) {
       const failure = await this.repository.failJob({
@@ -94,10 +97,22 @@ export class MemoryVectorWorker {
       );
 
       if (failure.retryable) {
+        this.metrics.recordProcessed("retry_scheduled", Date.now() - startedAt);
         return { processed: true, status: "retry_scheduled" };
       }
 
+      this.metrics.recordProcessed("failed", Date.now() - startedAt);
       throw error;
+    }
+  }
+
+  private async embedMemoryText(text: string): Promise<number[]> {
+    const startedAt = Date.now();
+
+    try {
+      return await this.embeddingProvider.embedText(text);
+    } finally {
+      this.metrics.recordProviderLatency(Date.now() - startedAt);
     }
   }
 }

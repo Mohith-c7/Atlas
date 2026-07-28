@@ -9,6 +9,7 @@ import {
 } from "@faios/contracts";
 import amqp, { type Channel, type ConsumeMessage } from "amqplib";
 import type { MemoryVectorWorker } from "./memory-vector-worker.js";
+import { MemoryVectorJobMetrics } from "./memory-vector-job.metrics.js";
 
 type ConsumerLogger = {
   info(payload: unknown, message: string): void;
@@ -27,6 +28,7 @@ export class RabbitMqMemoryVectorConsumer {
     private readonly rabbitMqUrl: string,
     private readonly worker: MemoryVectorWorker,
     private readonly logger: ConsumerLogger,
+    private readonly metrics = new MemoryVectorJobMetrics(),
   ) {}
 
   public async start(): Promise<void> {
@@ -43,11 +45,12 @@ export class RabbitMqMemoryVectorConsumer {
     await channel.assertQueue(deadLetterQueueName, {
       durable: true,
     });
-    await channel.assertQueue(queueName, {
+    const assertedQueue = await channel.assertQueue(queueName, {
       durable: true,
       deadLetterExchange: memoryVectorJobExchange,
       deadLetterRoutingKey: memoryVectorJobDeadLetterRoutingKey,
     });
+    this.metrics.setQueueDepth(assertedQueue.messageCount);
     await channel.bindQueue(
       deadLetterQueueName,
       memoryVectorJobExchange,
@@ -105,6 +108,7 @@ export class RabbitMqMemoryVectorConsumer {
         "Memory vector job message failed",
       );
       channel.nack(message, false, false);
+      this.metrics.recordDeadLettered();
     }
   }
 
